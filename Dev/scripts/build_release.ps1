@@ -144,7 +144,11 @@ if (-not (Test-Path -LiteralPath $sdlDst)) { throw "SDL3.dll missing in $stageAp
 Copy-Item -LiteralPath $licensePath -Destination (Join-Path $stageApp "LICENSE") -Force
 Copy-Item -LiteralPath $thirdPartyPath -Destination (Join-Path $stageDir "THIRDPARTY_LICENSES.txt") -Force
 $stageTools = Join-Path $stageApp "tools"; New-Item -ItemType Directory -Force $stageTools | Out-Null
-foreach ($tFile in @("7z.exe", "7z.dll", "LICENSE-7ZIP.txt")) { $tSrc = Join-Path $devDir "assets\native\$tFile"; if (Test-Path -LiteralPath $tSrc) { Copy-Item -LiteralPath $tSrc -Destination (Join-Path $stageTools $tFile) -Force } }
+$sevenZipDir = Split-Path -Parent $sevenZip
+foreach ($tFile in @("7z.exe", "7z.dll", "LICENSE-7ZIP.txt")) {
+    $tSrc = @((Join-Path $devDir "assets\native\$tFile"), (Join-Path $sevenZipDir $tFile)) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if ($tSrc) { Copy-Item -LiteralPath $tSrc -Destination (Join-Path $stageTools $tFile) -Force }
+}
 Copy-Item -Path (Join-Path $devDir "scripts\interactive\*.bat") -Destination $stageInteractive -Force
 Write-Utf8 (Join-Path $stageApp "version.txt") $Version
 $nowUtc = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")

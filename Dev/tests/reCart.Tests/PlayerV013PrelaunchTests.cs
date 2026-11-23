@@ -172,6 +172,13 @@ public sealed class PlayerV013PrelaunchTests
             if (File.Exists(candidate)) return candidate;
             dir = Directory.GetParent(dir)?.FullName;
         }
+
+        string pf7z = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.exe");
+        if (File.Exists(pf7z)) return pf7z;
+
+        string pf867z = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "7-Zip", "7z.exe");
+        if (File.Exists(pf867z)) return pf867z;
+
         return null;
     }
 
