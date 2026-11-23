@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>reCart.Contracts</AssemblyName>
+    <RootNamespace>reCart.Contracts</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Foundation.Retro">
+      <HintPath>..\..\lib\Foundation.Retro.dll</HintPath>
+    </Reference>
+    <Reference Include="reEngine.Core">
+      <HintPath>..\..\lib\reEngine.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="reEngine.Host">
+      <HintPath>..\..\lib\reEngine.Host.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

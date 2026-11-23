@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>reCart.Player</AssemblyName>
+    <RootNamespace>reCart.Player</RootNamespace>
+    <ApplicationIcon>..\..\assets\reCart.ico</ApplicationIcon>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'">
+    <DefineConstants>$(DefineConstants);RECART_ENABLE_AUTOMATION</DefineConstants>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="reCart.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\reCart.Contracts\reCart.Contracts.csproj" />
+    <ProjectReference Include="..\reCart.Core\reCart.Core.csproj" />
+    <ProjectReference Include="..\reCart.Compiler\reCart.Compiler.csproj" />
+    <ProjectReference Include="..\reCart.Decomp\reCart.Decomp.csproj" />
+    <Reference Include="Foundation.Core">
+      <HintPath>..\..\lib\Foundation.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Foundation.Retro">
+      <HintPath>..\..\lib\Foundation.Retro.dll</HintPath>
+    </Reference>
+    <Reference Include="reEngine.Core">
+      <HintPath>..\..\lib\reEngine.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="reEngine.Host">
+      <HintPath>..\..\lib\reEngine.Host.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'">
+    <Reference Include="Foundation.Automation">
+      <HintPath>..\..\lib\Foundation.Automation.dll</HintPath>
+    </Reference>
+    <Reference Include="Foundation.UI">
+      <HintPath>..\..\lib\Foundation.UI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\lib\SDL3.dll" Link="SDL3.dll" Condition="Exists('..\..\lib\SDL3.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\assets\native\7z.exe" Link="tools\7z.exe" Condition="Exists('..\..\assets\native\7z.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\assets\native\7z.dll" Link="tools\7z.dll" Condition="Exists('..\..\assets\native\7z.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\assets\native\LICENSE-7ZIP.txt" Link="tools\LICENSE-7ZIP.txt" Condition="Exists('..\..\assets\native\LICENSE-7ZIP.txt')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

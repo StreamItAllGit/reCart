@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Foundation.Automation</name>
+    </assembly>
+    <members>
+        <member name="T:Foundation.Automation.WinFormsAutomationSurfaceTarget">
+            <summary>
+            Wraps a WinForms root <see cref="T:System.Windows.Forms.Control"/> and optional <see cref="T:Foundation.Automation.IRenderSurfaceSnapshotProvider"/>
+            as a WinForms-agnostic <see cref="T:Foundation.Automation.IAutomationSurfaceTarget"/>.
+            </summary>
+        </member>
+        <member name="T:Foundation.Automation.IRenderSurfaceSnapshotProvider">
+            <summary>
+            Callback interface implemented by custom render surfaces (e.g., Raylib, OpenGL, Vulkan, SDL3)
+            so Foundation.Automation can snapshot framebuffers to PNG without taking an engine dependency.
+            </summary>
+        </member>
+        <member name="T:Foundation.Automation.IAutomationSurfaceTarget">
+            <summary>
+            WinForms-free UI/surface automation contract so SDL3, Avalonia, or cross-platform desktop hosts
+            can expose tree inspection, virtual input, and PNG capture without referencing WinForms.
+            </summary>
+        </member>
+        <member name="T:Foundation.Automation.Win32VirtualInputDriver">
+            <summary>
+            Dispatches pointer, keyboard, and UI-tree queries strictly to the target window/control
+            using window-scoped Win32 messages and WinForms control semantics without stealing host focus.
+            </summary>
+        </member>
+        <member name="T:Foundation.Automation.WindowSnapshotService">
+            <summary>
+            Captures WinForms, WebView2, or custom RGBA render surfaces offscreen into PNG files
+            without stealing host foreground focus.
+            </summary>
+        </member>
+    </members>
+</doc>

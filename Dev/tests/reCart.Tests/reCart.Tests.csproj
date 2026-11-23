@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'">
+    <DefineConstants>$(DefineConstants);RECART_ENABLE_AUTOMATION</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\reCart.Contracts\reCart.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\reCart.Core\reCart.Core.csproj" />
+    <ProjectReference Include="..\..\src\reCart.Compiler\reCart.Compiler.csproj" />
+    <ProjectReference Include="..\..\src\reCart.Decomp\reCart.Decomp.csproj" />
+    <ProjectReference Include="..\..\src\reCart.Player\reCart.Player.csproj" />
+    <ProjectReference Include="..\..\src\reCart.Installer\reCart.Installer.csproj" />
+    <Reference Include="Foundation.Core">
+      <HintPath>..\..\lib\Foundation.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Foundation.Installer">
+      <HintPath>..\..\lib\Foundation.Installer.dll</HintPath>
+    </Reference>
+    <Reference Include="Foundation.Retro">
+      <HintPath>..\..\lib\Foundation.Retro.dll</HintPath>
+    </Reference>
+    <Reference Include="reEngine.Core">
+      <HintPath>..\..\lib\reEngine.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="reEngine.Host">
+      <HintPath>..\..\lib\reEngine.Host.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'">
+    <Reference Include="Foundation.Automation">
+      <HintPath>..\..\lib\Foundation.Automation.dll</HintPath>
+    </Reference>
+    <Reference Include="Foundation.UI">
+      <HintPath>..\..\lib\Foundation.UI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\reCart.Launcher\LauncherArgsHelper.cs" Link="Linked\LauncherArgsHelper.cs" Condition="Exists('..\..\src\reCart.Launcher\LauncherArgsHelper.cs')" />
+  </ItemGroup>
+
+</Project>

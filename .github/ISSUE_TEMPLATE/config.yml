@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Reporting
+    url: https://github.com/StreamItAllGit/reCart/security/advisories/new
+    about: Please report security issues, path-traversal findings, or installer trust bugs privately.
+  - name: User Guide & Documentation
+    url: https://streamitallgit.github.io/reCart/
+    about: Setup instructions, BYO cartridge SHA-256 verification, and CLI reference.

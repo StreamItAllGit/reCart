@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    env:
+      APP_ISOLATED_TEST: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build & Package Release Bundle
+        shell: powershell
+        run: |
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          if ([string]::IsNullOrWhiteSpace($ver) -or $ver -eq 'main') {
+            $ver = (Get-Content Dev/version.txt -Raw).Trim()
+          }
+          powershell -NoProfile -ExecutionPolicy Bypass -File Dev/scripts/build_release.ps1 -Version $ver -SkipSigning
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: reCart-release-bundle
+          path: Releases/v*/

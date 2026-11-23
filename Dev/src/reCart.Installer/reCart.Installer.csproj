@@ -1,0 +1,101 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>reCart-Setup-v$(Version)-win-x64</AssemblyName>
+    <RootNamespace>reCart.Installer</RootNamespace>
+    <ApplicationTitle>reCart Setup</ApplicationTitle>
+    <ApplicationIcon>..\..\assets\reCart.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'">
+    <DefineConstants>$(DefineConstants);RECART_ENABLE_AUTOMATION</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="reCart.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\reCart.Contracts\reCart.Contracts.csproj">
+      <Private>false</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </ProjectReference>
+    <Reference Include="Foundation.Core">
+      <HintPath>..\..\lib\Foundation.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Foundation.Installer">
+      <HintPath>..\..\lib\Foundation.Installer.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Foundation.Retro">
+      <HintPath>..\..\lib\Foundation.Retro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="reEngine.Core">
+      <HintPath>..\..\lib\reEngine.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'">
+    <Reference Include="Foundation.Automation">
+      <HintPath>..\..\lib\Foundation.Automation.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Foundation.UI">
+      <HintPath>..\..\lib\Foundation.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CompressEmbeddedAssemblies"
+          DependsOnTargets="ResolveReferences;ResolveProjectReferences"
+          BeforeTargets="AssignTargetPaths;PrepareResourceNames;PrepareResources">
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <MSBuild Projects="..\reCart.Contracts\reCart.Contracts.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)"
+             RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;IncludeNativeLibrariesForSelfExtract;EnableCompressionInSingleFile;InstallerPayloadZip">
+      <Output TaskParameter="TargetOutputs" PropertyName="_ReCartContractsOut" />
+    </MSBuild>
+    <PropertyGroup Condition="'$(_ReCartContractsOut)' == ''">
+      <_ReCartContractsOut>$(MSBuildProjectDirectory)\..\reCart.Contracts\bin\$(Configuration)\net8.0\reCart.Contracts.dll</_ReCartContractsOut>
+    </PropertyGroup>
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$files = @('$(MSBuildProjectDirectory)\..\..\lib\Foundation.Core.dll','$(MSBuildProjectDirectory)\..\..\lib\Foundation.Installer.dll','$(MSBuildProjectDirectory)\..\..\lib\Foundation.Retro.dll','$(MSBuildProjectDirectory)\..\..\lib\reEngine.Core.dll','$(_ReCartContractsOut)'); foreach ($src in $files) { if (-not (Test-Path $src)) { throw ('Missing assembly: ' + $src) }; $name = [System.IO.Path]::GetFileName($src); $dst = Join-Path '$(MSBuildProjectDirectory)\$(IntermediateOutputPath)' ($name + '.gz'); $bytes = [System.IO.File]::ReadAllBytes($src); $fs = [System.IO.File]::Create($dst); try { $gz = New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionLevel]::Optimal); try { $gz.Write($bytes, 0, $bytes.Length) } finally { $gz.Dispose() } } finally { $fs.Dispose() } }&quot;" />
+    <ItemGroup>
+      <EmbeddedResource Remove="$(IntermediateOutputPath)Foundation.Core.dll.gz;$(IntermediateOutputPath)Foundation.Installer.dll.gz;$(IntermediateOutputPath)Foundation.Retro.dll.gz;$(IntermediateOutputPath)reEngine.Core.dll.gz;$(IntermediateOutputPath)reCart.Contracts.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)Foundation.Core.dll.gz" LogicalName="Foundation.Core.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)Foundation.Installer.dll.gz" LogicalName="Foundation.Installer.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)Foundation.Retro.dll.gz" LogicalName="Foundation.Retro.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)reEngine.Core.dll.gz" LogicalName="reEngine.Core.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)reCart.Contracts.dll.gz" LogicalName="reCart.Contracts.dll.gz" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CompressEmbeddedAutomationAssemblies"
+          Condition="'$(Configuration)' == 'Debug' Or '$(ReCartTestAutomation)' == 'true'"
+          BeforeTargets="AssignTargetPaths;PrepareResourceNames;PrepareResources">
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$files = @('$(MSBuildProjectDirectory)\..\..\lib\Foundation.Automation.dll','$(MSBuildProjectDirectory)\..\..\lib\Foundation.UI.dll'); $outDir = [System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)'); foreach ($src in $files) { if (-not (Test-Path $src)) { throw ('Missing assembly: ' + $src) }; $name = [System.IO.Path]::GetFileName($src); $dst = Join-Path $outDir ($name + '.gz'); $bytes = [System.IO.File]::ReadAllBytes($src); $fs = [System.IO.File]::Create($dst); try { $gz = New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionLevel]::Optimal); try { $gz.Write($bytes, 0, $bytes.Length) } finally { $gz.Dispose() } } finally { $fs.Dispose() } }&quot;" />
+    <ItemGroup>
+      <EmbeddedResource Remove="$(IntermediateOutputPath)Foundation.Automation.dll.gz;$(IntermediateOutputPath)Foundation.UI.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)Foundation.Automation.dll.gz" LogicalName="Foundation.Automation.dll.gz" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)Foundation.UI.dll.gz" LogicalName="Foundation.UI.dll.gz" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\Installer\installer.manifest.json" LogicalName="installer.manifest.json" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(InstallerPayloadZip)' != '' and Exists('$(InstallerPayloadZip)')">
+    <EmbeddedResource Include="$(InstallerPayloadZip)"
+                      LogicalName="reCart.Installer.Embedded.payload.zip" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Foundation.Installer</name>
+    </assembly>
+    <members>
+        <member name="T:Foundation.Installer.FileLockRetryHelper">
+            <summary>
+            Retries transient file-lock failures using a bounded 10-attempt backoff schedule (150ms -> 250ms -> 500ms cap).
+            </summary>
+        </member>
+        <member name="T:Foundation.Installer.InstallerEngineCore">
+            <summary>
+            Shared clean-root installation, upgrade, verification, and uninstallation engine (Standard 03 §5 &amp; Standard 12 §3.1).
+            Preserves user data\ and logs\ during upgrades and respects isolated runtime overrides (Standard 02).
+            </summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerMarkupManifest.SuiteName">
+            <summary>Legacy read-only JSON fallback for <see cref="P:Foundation.Installer.InstallerMarkupManifest.SuiteId"/> per Standard 18.</summary>
+        </member>
+        <member name="T:Foundation.Installer.InstallerProfileKind">
+            <summary>
+            Supported installer bundle footprint profiles (Standard 18: installProfile).
+            </summary>
+        </member>
+        <member name="T:Foundation.Installer.InstallerProfileOption">
+            <summary>
+            Selectable installation profile option presented in the setup wizard (e.g., Lightweight vs Full).
+            </summary>
+        </member>
+        <member name="M:Foundation.Installer.InstallerProfileOption.#ctor(System.String,Foundation.Installer.InstallerProfileKind,System.String,System.String,System.Boolean)">
+            <summary>
+            Selectable installation profile option presented in the setup wizard (e.g., Lightweight vs Full).
+            </summary>
+        </member>
+        <member name="T:Foundation.Installer.SecondaryPathPickerOptions">
+            <summary>
+            Optional secondary directory picker configuration for companion roots (e.g., --reengine-dir or --suite-dir).
+            </summary>
+        </member>
+        <member name="M:Foundation.Installer.SecondaryPathPickerOptions.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Optional secondary directory picker configuration for companion roots (e.g., --reengine-dir or --suite-dir).
+            </summary>
+        </member>
+        <member name="T:Foundation.Installer.InstallerCustomToggle">
+            <summary>
+            Optional per-app checkbox toggle displayed on the setup wizard surface (e.g., "Register with Mother Suite", "Create Desktop Shortcut").
+            </summary>
+        </member>
+        <member name="M:Foundation.Installer.InstallerCustomToggle.#ctor(System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Optional per-app checkbox toggle displayed on the setup wizard surface (e.g., "Register with Mother Suite", "Create Desktop Shortcut").
+            </summary>
+        </member>
+        <member name="T:Foundation.Installer.InstallerThemeOptions">
+            <summary>
+            Full visual and behavioral customization options for Foundation.Installer.dll so every app or game
+            can customize colors, icons, banners, and steps in under 30 lines of code without duplicating the wizard.
+            </summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.AppId">
+            <summary>Canonical application identifier (Standard 18: appId, e.g., "housekeeping" or "shadowlibrary").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.DisplayName">
+            <summary>Human-facing Title Case application name (e.g., "Housekeeping" or "ShadowLibrary").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.Version">
+            <summary>Active SemVer build version (Standard 18: version, e.g., "1.0.0-rc.14").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.Subtitle">
+            <summary>Sentence-case subtitle displayed beneath the wizard header.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.BrandAccentHex">
+            <summary>Primary brand accent hex color (e.g., "#F59E0B" Amber for Housekeeping, "#6366F1" Indigo for ShadowLibrary).</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.SurfaceBackdropHex">
+            <summary>Primary window backdrop surface hex (defaults to Standard 09 surface-0 "#0E0E10").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.SurfaceCardHex">
+            <summary>Raised card surface hex (defaults to Standard 09 surface-2 "#18181B").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.WindowIconResource">
+            <summary>Optional path or embedded resource name for the custom .ico window/taskbar icon.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.HeaderLogoResource">
+            <summary>Optional path or embedded resource name for the header emblem/logo image.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.DefaultInstallDir">
+            <summary>Default canonical production target path.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.ExecutableFileName">
+            <summary>Primary launcher executable filename at the installed root (defaults to "&lt;DisplayName&gt;.exe").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.UninstallerFileName">
+            <summary>Uninstaller executable filename at the installed root (defaults to "&lt;DisplayName&gt;-Uninstall.exe").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.BootstrapSharedSuiteDaemon">
+            <summary>Whether to bundle and bootstrap the Shared Suite Daemon during install.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.AllowAutoStart">
+            <summary>Whether the application supports launching automatically at Windows sign-in.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.CustomToggles">
+            <summary>Customizable optional toggles presented to the user before installation starts.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.StudioName">
+            <summary>Studio umbrella folder under %LOCALAPPDATA%\Programs\ (defaults to "StreamItAll").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.SuiteName">
+            <summary>Optional suite folder nested under StudioName (e.g., "Mother" or "reEngine").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.UmbrellaSubpath">
+            <summary>Optional explicit umbrella subpath relative to %LOCALAPPDATA%\Programs\ (Standard 18: umbrellaSubpath).</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.AvailableProfiles">
+            <summary>Available installation profiles presented to the user (e.g., Lightweight vs Full).</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.DefaultProfileId">
+            <summary>Default installation profile identifier (Standard 18: installProfile, defaults to "lightweight").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.SecondaryPathPicker">
+            <summary>Optional secondary directory picker (e.g., --reengine-dir or --suite-dir).</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.AllowLegacyMigration">
+            <summary>Whether the wizard offers opt-in migration from legacy flat &lt;PROGRAMS_ROOT&gt;\ installations.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.LayoutMode">
+            <summary>Wizard header/status layout mode ("single-line" or "multi-line").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.TextPrimaryHex">
+            <summary>Optional primary text hex override from installer.manifest.json.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.BorderHex">
+            <summary>Optional border hex override from installer.manifest.json.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.SupportedProfiles">
+            <summary>Optional supported profile list ("lightweight", "full", "custom").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.Buttons">
+            <summary>Optional wizard button label overrides.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.Tooltips">
+            <summary>Optional 2-line tooltip overrides keyed by control role.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.SecondaryPickers">
+            <summary>Optional list of secondary directory pickers loaded from installer.manifest.json.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.InstallerDeliveryKind">
+            <summary>Setup delivery kind ("onlineSetup" | "offlineSetup" | "portableZip").</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.PayloadDownloadUrl">
+            <summary>Pinned HTTPS base/asset URL used by compact Online Setup installers.</summary>
+        </member>
+        <member name="P:Foundation.Installer.InstallerThemeOptions.PayloadAssets">
+            <summary>Pinned SHA-256 and byte-size payload asset descriptors for Online Setup delivery.</summary>
+        </member>
+        <member name="T:Foundation.Installer.InstallerWizardControls">
+            <summary>
+            Shared dark-theme control builders and hex color utilities for Foundation.Installer's Setup Wizard (Standard 09).
+            </summary>
+        </member>
+        <member name="T:Foundation.Installer.WindowsShortcutWriter">
+            <summary>
+            Pure managed C# writer for Windows Shell Link (.lnk) files and HKCU Uninstall/Startup registry keys.
+            Skips live host registry mutations when suppressed for isolated test execution (Standard 02).
+            </summary>
+        </member>
+    </members>
+</doc>

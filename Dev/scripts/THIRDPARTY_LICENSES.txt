@@ -1,0 +1,21 @@
+reCart Third-Party Software Notices and Licenses
+=================================================
+
+reCart distributes or depends upon the following third-party open-source
+components across its SDL3 host layer and release packaging utilities:
+
+1. ppy.SDL3-CS (Managed .NET SDL3 Bindings)
+   - Upstream Project: https://github.com/ppy/SDL3-CS
+   - License: MIT License
+
+2. Simple DirectMedia Layer (SDL3)
+   - Upstream Project: https://libsdl.org/
+   - License: zlib License
+   - Notice: This software uses SDL3 for native cross-platform windowing,
+     audio output, and gamepad event handling without bundling retail media.
+
+3. 7-Zip (7z.exe / 7z.dll)
+   - Upstream Project: https://www.7-zip.org/
+   - License: GNU LGPL v2.1+ with unRAR restriction / BSD-3-Clause
+   - Notes: Used for source/release packaging and clean-room archive operations;
+     see LICENSE-7ZIP.txt for full license terms.

@@ -1,0 +1,100 @@
+{
+  "folders": [
+    {
+      "name": "1. reCart — Engine Dev",
+      "path": "."
+    },
+    {
+      "name": "2. reCart — Project Root",
+      "path": ".."
+    },
+    {
+      "name": "3. reEngine — Router & Host",
+      "path": "../../reEngine/Dev"
+    },
+    {
+      "name": "4. Foundation — Shared SDK",
+      "path": "../../Foundation/Dev"
+    }
+  ],
+  "settings": {
+    "dotnet.defaultSolution": "reCart.slnx",
+    "files.eol": "\n",
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/__pycache__": true,
+      "**/.cache": true,
+      "**/[Dd]esktop.ini": true,
+      "**/[Tt]humbs.db": true
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Audit reCart Scaffold",
+        "type": "shell",
+        "command": "powershell",
+        "args": [
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${userHome}/.gemini/config/skills/graduate/scripts/scaffold_project.ps1",
+          "-ProjectName",
+          "reCartOne",
+          "-Group",
+          "Personal",
+          "-AllowInitialEmptyInstallers",
+          "-AuditOnly"
+        ],
+        "group": {
+          "kind": "test",
+          "isDefault": false
+        }
+      },
+      {
+        "label": "Build reCart (.NET)",
+        "type": "shell",
+        "command": "dotnet",
+        "args": [
+          "build",
+          "reCart.slnx",
+          "-c",
+          "Release",
+          "/warnaserror"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      },
+      {
+        "label": "Test reCart (.NET)",
+        "type": "shell",
+        "command": "dotnet",
+        "args": [
+          "test",
+          "reCart.slnx",
+          "-c",
+          "Release",
+          "/warnaserror"
+        ],
+        "options": {
+          "env": {
+            "APP_ISOLATED_TEST": "1"
+          }
+        },
+        "group": {
+          "kind": "test",
+          "isDefault": true
+        }
+      }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csdevkit"
+    ]
+  }
+}

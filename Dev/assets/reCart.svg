@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181B" />
+      <stop offset="100%" stop-color="#09090B" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444" />
+      <stop offset="52%" stop-color="#E4E4E7" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+    <linearGradient id="crimsonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F87171" />
+      <stop offset="100%" stop-color="#DC2626" />
+    </linearGradient>
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F4F4F5" />
+      <stop offset="100%" stop-color="#A1A1AA" />
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad)" stroke="url(#accentGrad)" stroke-width="14" />
+  <rect x="52" y="52" width="408" height="408" rx="82" fill="none" stroke="#27272A" stroke-width="8" />
+  <!-- Cartridge top accent bar -->
+  <rect x="112" y="106" width="288" height="36" rx="10" fill="url(#crimsonGrad)" />
+  <rect x="132" y="118" width="108" height="12" rx="6" fill="#18181B" opacity="0.45" />
+  <!-- Classic 8-bit cartridge & controller faceplate -->
+  <rect x="96" y="176" width="320" height="166" rx="26" fill="#27272A" stroke="url(#silverGrad)" stroke-width="10" />
+  <rect x="114" y="194" width="284" height="130" rx="14" fill="#141417" />
+  <!-- D-pad -->
+  <rect x="164" y="218" width="28" height="82" rx="6" fill="#E4E4E7" />
+  <rect x="137" y="245" width="82" height="28" rx="6" fill="#E4E4E7" />
+  <circle cx="178" cy="259" r="8" fill="#52525B" />
+  <!-- Select / Start center pills -->
+  <rect x="234" y="268" width="20" height="10" rx="5" fill="#A1A1AA" />
+  <rect x="262" y="268" width="20" height="10" rx="5" fill="#A1A1AA" />
+  <!-- B & A crimson buttons on light pads -->
+  <rect x="298" y="236" width="38" height="44" rx="8" fill="#E4E4E7" />
+  <rect x="344" y="236" width="38" height="44" rx="8" fill="#E4E4E7" />
+  <circle cx="317" cy="258" r="14" fill="url(#crimsonGrad)" />
+  <circle cx="363" cy="258" r="14" fill="url(#crimsonGrad)" />
+  <!-- Bottom AOT recomp circuit pins -->
+  <path d="M168 342 V388 M212 342 V402 M256 342 V408 M300 342 V402 M344 342 V388" stroke="#38BDF8" stroke-width="12" stroke-linecap="round" />
+  <circle cx="168" cy="392" r="10" fill="#38BDF8" />
+  <circle cx="256" cy="410" r="11" fill="#EF4444" />
+  <circle cx="344" cy="392" r="10" fill="#38BDF8" />
+</svg>

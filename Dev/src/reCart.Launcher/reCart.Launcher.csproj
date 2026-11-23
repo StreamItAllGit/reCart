@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>reCart</AssemblyName>
+    <RootNamespace>reCart.Launcher</RootNamespace>
+    <ApplicationIcon>..\..\assets\reCart.ico</ApplicationIcon>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="reCart.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Foundation.Launcher">
+      <HintPath>..\..\lib\Foundation.Launcher.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <EmbeddedResource Include="..\..\lib\Foundation.Launcher.dll" LogicalName="Foundation.Launcher.dll" />
+  </ItemGroup>
+
+</Project>

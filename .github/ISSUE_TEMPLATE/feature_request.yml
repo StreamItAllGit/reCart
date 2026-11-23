@@ -1,0 +1,16 @@
+name: Feature Request
+description: Propose a clean-room enhancement, mapper addition, or tooling improvement for reCart
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary & Hardware / AOT Rationale
+      description: Describe the clean-room feature or mapper behavior without referencing or attaching copyrighted assets.
+    validations:
+      required: true
+  - type: input
+    id: milestone
+    attributes:
+      label: Target Milestone (optional)
+      placeholder: "e.g., v0.2.0"

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/reCart.Contracts/reCart.Contracts.csproj" />
+    <Project Path="src/reCart.Core/reCart.Core.csproj" />
+    <Project Path="src/reCart.Compiler/reCart.Compiler.csproj" />
+    <Project Path="src/reCart.Decomp/reCart.Decomp.csproj" />
+    <Project Path="src/reCart.Player/reCart.Player.csproj" />
+    <Project Path="src/reCart.Launcher/reCart.Launcher.csproj" />
+    <Project Path="src/reCart.Installer/reCart.Installer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/reCart.Tests/reCart.Tests.csproj" />
+  </Folder>
+</Solution>

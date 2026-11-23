@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schemas.local/manifest.v2.json",
+  "schemaVersion": 2,
+  "manifestType": "installer-manifest",
+  "appId": "recart",
+  "engineId": "reCart",
+  "legacyEngineIds": [
+    "reCartOne",
+    "reNes"
+  ],
+  "platformId": "nes",
+  "version": "0.1.3",
+  "hostProtocolVersion": "0.6.2",
+  "minSuiteVersion": "0.6.0",
+  "updatedAtUtc": "2026-11-23T19:30:00.000Z",
+  "displayName": "reCart",
+  "appTitle": "reCart Setup",
+  "publisher": "StreamItAll",
+  "subtitle": "AOT-Primary 6502 Static Recompilation Engine for reEngine",
+  "studioName": "StreamItAll",
+  "suiteId": "reEngine",
+  "umbrellaSubpath": "StreamItAll\\reEngine\\engines\\reCart\\v0.1.3",
+  "mainExecutableRelativePath": "reCart.exe",
+  "allowAutoStart": false,
+  "allowLegacyMigration": false,
+  "layoutMode": "single-line",
+  "supportedProfiles": [
+    "lightweight",
+    "full"
+  ],
+  "defaultProfile": "lightweight",
+  "theme": {
+    "background": "#0E0E10",
+    "surface": "#18181B",
+    "accent": "#F59E0B",
+    "text": "#F4F4F5",
+    "border": "#3F3F46"
+  },
+  "secondaryPickers": [
+    {
+      "flagName": "--suite-dir",
+      "label": "reEngine Suite Root:",
+      "placeholder": "%LOCALAPPDATA%\\Programs\\StreamItAll\\reEngine",
+      "tooltip": "Parent StreamItAll\\reEngine suite directory containing side-by-side engines."
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+    "schemaVersion":  1,
+    "appId":  "reengine",
+    "displayName":  "reEngine",
+    "sdkVersion":  "0.6.2",
+    "version":  "0.6.2",
+    "updatedAtUtc":  "2026-11-23T20:56:52.095Z",
+    "artifacts":  [
+                      {
+                          "fileName":  "LICENSE",
+                          "fileSizeBytes":  16726,
+                          "sha256Hex":  "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+                      },
+                      {
+                          "fileName":  "reEngine.Core.deps.json",
+                          "fileSizeBytes":  1211,
+                          "sha256Hex":  "6e0b5d796a5629b603608b9dcf955ed36e0bb0d93f5b5ef29a1b3d6e191573b5"
+                      },
+                      {
+                          "fileName":  "reEngine.Core.dll",
+                          "fileSizeBytes":  283648,
+                          "sha256Hex":  "32add78f4d2a1bfe3670d3cfeb1e6bd2acb95a303d258da72d8252365308277f"
+                      },
+                      {
+                          "fileName":  "reEngine.Core.xml",
+                          "fileSizeBytes":  137775,
+                          "sha256Hex":  "804ac6011a2dc5d7e308a49bec0919b0afdf8a8bc9be4c874ba6831ed3a4fb18"
+                      },
+                      {
+                          "fileName":  "reEngine.Host.deps.json",
+                          "fileSizeBytes":  5472,
+                          "sha256Hex":  "f849e029d3d6803d5aa9e4fa7f52667a77ffd71cc7c6c78741ee769b7896fc4b"
+                      },
+                      {
+                          "fileName":  "reEngine.Host.dll",
+                          "fileSizeBytes":  469504,
+                          "sha256Hex":  "84e3f6e477308666b0e659b75230e9c324fbba87dca03d338db928b8b4399267"
+                      },
+                      {
+                          "fileName":  "reEngine.Host.xml",
+                          "fileSizeBytes":  155569,
+                          "sha256Hex":  "96d16354a160ffd1ef3cb2a60a0e52892f5c4f6f8940f45d30c34f655cf7a367"
+                      },
+                      {
+                          "fileName":  "reEngine-Setup-v0.6.2-win-x64.exe",
+                          "fileSizeBytes":  74374224,
+                          "sha256Hex":  "9caeb29fbbdce373ab9a6f68ed392d6620a4a74269228ecb95bafdf2688286ce"
+                      },
+                      {
+                          "fileName":  "SDL3.dll",
+                          "fileSizeBytes":  3121664,
+                          "sha256Hex":  "08a8ae941e6fcb14a2ca15fffb4b93732f0f81d965978871141d89c48ecfcfe3"
+                      },
+                      {
+                          "fileName":  "THIRDPARTY_LICENSES.txt",
+                          "fileSizeBytes":  1571,
+                          "sha256Hex":  "b19ef07f6dcd728c2d976942f0089c2a1d8729e54c2df846caef76a49f208608"
+                      }
+                  ]
+}

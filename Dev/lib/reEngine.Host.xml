@@ -1,0 +1,2196 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>reEngine.Host</name>
+    </assembly>
+    <members>
+        <member name="T:reEngine.Host.Audio.HostAudioDspPipeline">
+            <summary>
+            Deterministic audio DSP pipeline applying mixer gains, smooth focus-loss ramps, mid-side width,
+            2nd-order Butterworth LP/HP filters, fast-forward clamping, and stereo resampling.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.SampleRate">
+            <summary>Gets the configured output sample rate in Hz.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.Channels">
+            <summary>Gets the configured channel count (<c>1</c> or <c>2</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.Settings">
+            <summary>Gets the active normalized mixer settings.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.IsWindowFocused">
+            <summary>Gets whether the host window currently has focus.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.IsFastForwardEnabled">
+            <summary>Gets whether fast-forward mode is active.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.FastForwardMultiplier">
+            <summary>Gets the active fast-forward speed multiplier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostAudioDspPipeline.CurrentFocusGain">
+            <summary>Gets the instantaneous focus-ramp gain (<c>0.0..1.0</c>) for diagnostics and testing.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.#ctor(System.Int32,System.Int32,reEngine.Host.Contracts.HostAudioMixerSettings)">
+            <summary>Initializes a new <see cref="T:reEngine.Host.Audio.HostAudioDspPipeline"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.ApplySettings(reEngine.Host.Contracts.HostAudioMixerSettings)">
+            <summary>Applies normalized mixer and filter settings without clearing running biquad state unnecessarily.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.SetFocusAndFastForward(System.Boolean,System.Boolean,System.Double)">
+            <summary>Updates window focus and fast-forward state for the 5 ms anti-pop focus ramp and FF clamping.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.ResetFilterState">
+            <summary>Resets biquad delay lines and restores the focus-loss ramp to its steady target.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.MixCategories(System.ReadOnlySpan{System.Int16},System.ReadOnlySpan{System.Int16},System.ReadOnlySpan{System.Int16},System.Span{System.Int16})">
+            <summary>Mixes BGM, SFX, and Voice interleaved buffers using <see cref="P:reEngine.Host.Audio.HostAudioDspPipeline.Settings"/> category gains.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.ProcessInterleaved(System.Span{System.Int16})">
+            <summary>Processes interleaved 16-bit PCM samples in place through the full DSP chain.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.ProcessInterleaved(System.ReadOnlySpan{System.Int16},System.Span{System.Int16})">
+            <summary>Processes interleaved 16-bit PCM samples from <paramref name="sourcePcm"/> into <paramref name="destinationPcm"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.ResampleInterleavedStereo(System.ReadOnlySpan{System.Int16},System.Int32,System.Int32,System.Span{System.Int16})">
+            <summary>Resamples interleaved stereo PCM using configured <see cref="T:reEngine.Host.Contracts.HostAudioResamplingMode"/> (<c>Linear</c> vs 4-tap Catmull-Rom).</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostAudioDspPipeline.ResampleInterleavedStereo(System.ReadOnlySpan{System.Int16},System.Double,System.Span{System.Int16})">
+            <summary>Resamples interleaved stereo PCM at an explicit step ratio using Linear or 4-tap Catmull-Rom interpolation.</summary>
+        </member>
+        <member name="T:reEngine.Host.Audio.HostBiquadKind">
+            <summary>Filter topology implemented by <see cref="T:reEngine.Host.Audio.HostBiquadFilter"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Audio.HostBiquadFilter">
+            <summary>
+            Stereo 2nd-order Butterworth biquad filter (<c>Q = 1 / Sqrt(2)</c>) using Transposed Direct Form II with denormal guards.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostBiquadFilter.Kind">
+            <summary>Gets the active filter topology.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostBiquadFilter.CutoffHz">
+            <summary>Gets the configured cutoff frequency in Hz (<c>0</c> = bypassed).</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostBiquadFilter.SampleRate">
+            <summary>Gets the configured audio sample rate in Hz.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostBiquadFilter.IsEnabled">
+            <summary>Gets whether the filter is currently enabled (<see cref="P:reEngine.Host.Audio.HostBiquadFilter.CutoffHz"/> &gt; 0).</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostBiquadFilter.#ctor(reEngine.Host.Audio.HostBiquadKind,System.Double,System.Int32)">
+            <summary>Initializes a new stereo Butterworth biquad filter.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostBiquadFilter.Configure(reEngine.Host.Audio.HostBiquadKind,System.Double,System.Int32)">
+            <summary>Recomputes RBJ 2nd-order Butterworth coefficients for the given cutoff and sample rate.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostBiquadFilter.Reset">
+            <summary>Clears filter delay state across both channels.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostBiquadFilter.ProcessStereo(System.Double@,System.Double@)">
+            <summary>Processes a single stereo sample pair in place.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostBiquadFilter.ProcessInterleaved(System.Span{System.Int16})">
+            <summary>Processes an interleaved 16-bit stereo PCM buffer in place.</summary>
+        </member>
+        <member name="T:reEngine.Host.Audio.HostSoundTestService">
+            <summary>
+            Clean-room Sound Test jukebox supporting child <see cref="T:reEngine.Host.Contracts.IHostSoundTestProvider"/> adapters and built-in synthetic stereo tracks.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostSoundTestService.IsPlaying">
+            <summary>Gets whether Sound Test audition playback is currently active.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostSoundTestService.SelectedIndex">
+            <summary>Gets the zero-based index of the selected track.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostSoundTestService.IsUsingExternalProvider">
+            <summary>Gets whether an external platform engine provider is attached.</summary>
+        </member>
+        <member name="P:reEngine.Host.Audio.HostSoundTestService.CurrentTrack">
+            <summary>Gets the currently selected Sound Test track descriptor.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.#ctor(reEngine.Host.Contracts.IHostSoundTestProvider,System.Int32)">
+            <summary>Initializes a new <see cref="T:reEngine.Host.Audio.HostSoundTestService"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.GetTracks">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.PlayTrack(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.Stop">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.TogglePlayStop">
+            <summary>Toggles Sound Test playback on the currently selected track.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.NextTrack">
+            <summary>Advances to the next track (wrapping cleanly) and switches audition playback if currently playing.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.PrevTrack">
+            <summary>Moves to the previous track (wrapping cleanly) and switches audition playback if currently playing.</summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.HostSoundTestService.RenderInterleavedStereo(System.Span{System.Int16})">
+            <summary>Synthesizes interleaved 16-bit stereo PCM for the active clean-room audition track into <paramref name="dst"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Audio.Sdl3AudioDeviceNative">
+            <summary>
+            Enumerates SDL3 audio playback endpoints and resolves device identifiers without modifying <see cref="T:reEngine.Host.Core.Sdl3Native"/>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Audio.Sdl3AudioDeviceNative.EnumeratePlaybackDevices">
+            <summary>
+            Enumerates active OS audio playback devices via SDL3 and releases native array memory via <c>SDL_free</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostControlMode">
+            <summary>Primary PC/console camera and movement mode (Standard 18: <c>controlMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostControlModeCodec">
+            <summary>Converts and formats <see cref="T:reEngine.Host.Contracts.HostControlMode"/> values per Standard 18.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostMenuControllerChord">
+            <summary>Customizable controller chord opening the overlay menu (Standard 18: <c>menuControllerChord</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostMenuControllerChordCodec">
+            <summary>Converts, cycles, and evaluates <see cref="T:reEngine.Host.Contracts.HostMenuControllerChord"/> values.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostActionBindingIds">
+            <summary>Canonical Standard 18 action keys stored inside <c>hostActionBindings</c>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostActionBindingSet">
+            <summary>
+            Cross-slice contract for rebindable host recomp actions (<c>hostActionBindings</c>).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostFastForwardAudioMode">
+            <summary>Fast-forward audio clamping policy (Standard 18: <c>fastForwardAudioMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostFastForwardAudioModeCodec">
+            <summary>Normalizes and cycles <see cref="T:reEngine.Host.Contracts.HostFastForwardAudioMode"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioResamplingMode">
+            <summary>Host audio stream resampling quality (Standard 18: <c>audioResamplingMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioResamplingModeCodec">
+            <summary>Normalizes and toggles <see cref="T:reEngine.Host.Contracts.HostAudioResamplingMode"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioFilterPreset">
+            <summary>One-click 2nd-order Butterworth audio filter presets in the Audio tab.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioFilterPresetCodec">
+            <summary>Maps biquad LP/HP presets to cutoff frequencies in Hz.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioDeviceInfo">
+            <summary>Enumerated SDL3 audio playback output device metadata.</summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostAudioDeviceInfo.#ctor(System.UInt32,System.String,System.Boolean)">
+            <summary>Enumerated SDL3 audio playback output device metadata.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioMixerSettings">
+            <summary>Immutable snapshot of active audio DSP and mixer settings.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostSoundTestTrack">
+            <summary>Descriptor for a selectable Sound Test / BGM audition track.</summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostSoundTestTrack.#ctor(System.String,System.String,System.String,System.Int32)">
+            <summary>Descriptor for a selectable Sound Test / BGM audition track.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostSoundTestProvider">
+            <summary>Clean-room Sound Test audition provider exposed by child platform engines or host demo.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostExecutionResilienceOptions">
+            <summary>Runtime execution resilience and crash-recovery configuration for <c>HostSessionRunner</c>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostScreenshotResult">
+            <summary>Result returned by <c>HostScreenshotService</c> on <c>F12</c> capture.</summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostScreenshotResult.#ctor(System.Boolean,System.String,reEngine.Host.Contracts.HostScreenshotCaptureMode,System.Int32,System.Int32,System.String)">
+            <summary>Result returned by <c>HostScreenshotService</c> on <c>F12</c> capture.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostGamepadButtons">
+            <summary>
+            Platform-neutral controller button bitmask populated per frame.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostRenderBackendKind">
+            <summary>
+            Supported clean-room render backend kinds exposed by <c>reEngine.Host</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostDrawerTabId">
+            <summary>
+            Canonical host overlay tabs exposed in the <c>F1</c> slide-over settings drawer.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostInputFrame">
+            <summary>
+            Non-ref immutable value-type frame input snapshot safe for generic delegates, queues, and async boundaries.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAudioFormat">
+            <summary>
+            Describes the interleaved audio stream format configured by a host session.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostAudioFormat.#ctor(System.Int32,System.Int16,System.Int32)">
+            <summary>
+            Describes the interleaved audio stream format configured by a host session.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostDrawerRowDescriptor">
+            <summary>
+            Single descriptor item rendered inside an <c>F1</c> drawer tab.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostDrawerRowDescriptor.#ctor(System.String,reEngine.Host.Contracts.HostDrawerTabId,System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Single descriptor item rendered inside an <c>F1</c> drawer tab.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostDrawerDescriptor">
+            <summary>
+            Console-agnostic descriptor parameterizing the <c>F1</c> 5-tab settings drawer and media gate.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostDrawerDescriptor.#ctor(System.String,System.String,System.String,System.String,System.Int32,System.String,System.String,System.Collections.Generic.IReadOnlyList{reEngine.Host.Contracts.HostDrawerRowDescriptor},System.Collections.Generic.IReadOnlyList{reEngine.Host.Contracts.HostControlOptionDescriptor})">
+            <summary>
+            Console-agnostic descriptor parameterizing the <c>F1</c> 5-tab settings drawer and media gate.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostWidgetBounds">
+            <summary>
+            Reported overlay control geometry mirrored into automation inspection trees.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostWidgetBounds.#ctor(System.String,System.String,System.String,System.Drawing.Rectangle,System.Boolean)">
+            <summary>
+            Reported overlay control geometry mirrored into automation inspection trees.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostSessionOptions">
+            <summary>
+            Runtime launch options accepted by <c>HostSessionRunner</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostSessionResult">
+            <summary>
+            Exit result returned by <c>HostSessionRunner</c>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostSessionResult.#ctor(System.Int32,System.Int64,System.Boolean,System.Boolean,reEngine.Host.Contracts.HostDrawerTabId,System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Exit result returned by <c>HostSessionRunner</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostRenderBackend">
+            <summary>
+            Video surface presenter abstraction implemented cleanly for RGBA or GL backends.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostSessionCallbacks">
+            <summary>
+            Engine callbacks invoked each frame by <c>HostSessionRunner</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostAutomationTarget">
+            <summary>
+            Thread-safe automation bridge target driven at the SDL frame boundary under Debug/Test builds.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostDisplayMode">
+            <summary>Host windowing mode (Standard 18: <c>displayMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostDisplayModeCodec">
+            <summary>Normalizes and cycles <see cref="T:reEngine.Host.Contracts.HostDisplayMode"/> values.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostHudAnchorMode">
+            <summary>Widescreen HUD alignment policy (Standard 18: <c>hudAnchorMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostHudAnchorModeCodec">
+            <summary>Normalizes and cycles <see cref="T:reEngine.Host.Contracts.HostHudAnchorMode"/> values.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostVideoFilterMode">
+            <summary>All 8 live presentation filter presets (Standard 18: <c>videoFilterMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostVideoFilterModeCodec">
+            <summary>Normalizes, aliases (<c>crt-aperture -&gt; crtLite</c>), and cycles <see cref="T:reEngine.Host.Contracts.HostVideoFilterMode"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostScreenshotCaptureMode">
+            <summary>F12 screenshot capture source (Standard 18: <c>screenshotCaptureMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostScreenshotCaptureModeCodec">
+            <summary>Normalizes and toggles <see cref="T:reEngine.Host.Contracts.HostScreenshotCaptureMode"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostMonitorInfo">
+            <summary>Enumerated OS monitor metadata returned by SDL3 display enumeration.</summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostMonitorInfo.#ctor(System.Int32,System.UInt32,System.String,System.Int32,System.Int32,System.Int32,System.Int32,System.Single,System.Boolean)">
+            <summary>Enumerated OS monitor metadata returned by SDL3 display enumeration.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostFrameRateMode">
+            <summary>Frame-rate cadence policy (Standard 18: <c>frameRateMode</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostFrameRateModeCodec">
+            <summary>Normalizes and formats <see cref="T:reEngine.Host.Contracts.HostFrameRateMode"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAotCompileState">
+            <summary>Progress snapshot rendered on the responsive AOT compile overlay.</summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostAotCompileState.#ctor(System.Boolean,System.String,System.Double,System.String)">
+            <summary>Progress snapshot rendered on the responsive AOT compile overlay.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostVideoPresentationState">
+            <summary>Snapshot of active video presentation, VRR pacing, filter, color, and screenshot state.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostBackendCapability">
+            <summary>
+            Runtime hardware/driver availability probe result for a clean-room render backend.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostBackendCapability.#ctor(reEngine.Host.Contracts.HostRenderBackendKind,System.String,System.Boolean,System.String)">
+            <summary>
+            Runtime hardware/driver availability probe result for a clean-room render backend.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostGraphicsContextHandle">
+            <summary>
+            Opaque native graphics handles exposed by <c>reEngine.Host</c> so console-specific engines (e.g. <c>reSlate</c>)
+            can issue hardware draw calls on the host-owned window/swapchain without owning SDL3 window boilerplate.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostGraphicsContextHandle.#ctor(reEngine.Host.Contracts.HostRenderBackendKind,System.IntPtr,System.IntPtr,System.IntPtr,System.IntPtr,System.IntPtr,System.Func{System.String,System.IntPtr})">
+            <summary>
+            Opaque native graphics handles exposed by <c>reEngine.Host</c> so console-specific engines (e.g. <c>reSlate</c>)
+            can issue hardware draw calls on the host-owned window/swapchain without owning SDL3 window boilerplate.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostGraphicsContext">
+            <summary>
+            Active native GPU or CPU presenter graphics context owned by <c>reEngine.Host</c>.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Contracts.IHostGraphicsContext.OwnerThreadId">
+            <summary>Gets the managed thread ID of the context owner thread, or <c>0</c> when unbound.</summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.IHostGraphicsContext.TryReadSurfaceRect(System.Int32,System.Int32,System.Int32,System.Int32,System.Span{System.Byte})">
+            <summary>
+            Attempts to read back an RGBA8888 surface rectangle on the context owner thread without Y-flip inversion.
+            </summary>
+            <param name="x">Source X origin in pixels.</param>
+            <param name="y">Source Y origin in pixels.</param>
+            <param name="width">Rectangle width in pixels.</param>
+            <param name="height">Rectangle height in pixels.</param>
+            <param name="rgbaDestination">Destination span holding at least <c>width * height * 4</c> bytes.</param>
+            <returns><c>true</c> if readback succeeded on the owner thread; otherwise <c>false</c>.</returns>
+        </member>
+        <member name="M:reEngine.Host.Contracts.IHostGraphicsContext.FlushAndSyncForSnapshot">
+            <summary>
+            Flushes pending GPU work on the context owner thread before QuickSave capture or presenter switch teardown.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.IHostGraphicsContext.SetVSyncEnabled(System.Boolean)">
+            <summary>Updates swapchain vertical sync behavior when supported by the native backend.</summary>
+        </member>
+        <member name="P:reEngine.Host.Contracts.IHostGraphicsContext.LastPresentedDestRect">
+            <summary>Gets the most recent viewport destination rectangle presented to the window surface.</summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostSurfacePresenter">
+            <summary>
+            Console-agnostic presentation surface abstraction implemented by OpenGL, Vulkan, DirectX 12, ParallelCpu, and Software backends.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HdTextureOverrideKey">
+            <summary>
+            Composite CLUT + VRAM rectangle SHA-256 key identifying an override texture under <c>hdpacks\</c>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HdTextureOverrideKey.#ctor(System.String,System.String)">
+            <summary>
+            Composite CLUT + VRAM rectangle SHA-256 key identifying an override texture under <c>hdpacks\</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HdTextureOverrideEntry">
+            <summary>
+            Validated path-contained <c>hdpacks\</c> texture override asset record.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HdTextureOverrideEntry.#ctor(System.String,System.String,System.String,System.String,System.Int64)">
+            <summary>
+            Validated path-contained <c>hdpacks\</c> texture override asset record.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHdTexturePackResolver">
+            <summary>
+            Resolves optional user-supplied HD texture overrides strictly contained inside <c>&lt;dataDir&gt;\hdpacks\</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostBindingCodes">
+            <summary>
+            Standard 18 binding code constants across SDL keyboard scancodes (4..511), mouse/wheel (1001..1007), and gamepad (2001..2032).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostMultiBindSlot">
+            <summary>
+            3-slot keyboard/mouse plus gamepad binding row exposed in the 5-column F1 Keybinds drawer.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostMultiBindSlot.#ctor(System.String,System.String,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            3-slot keyboard/mouse plus gamepad binding row exposed in the 5-column F1 Keybinds drawer.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostControlOptionDescriptor">
+            <summary>
+            Dynamic module-declared control pill rendered inside <c>F1 -&gt; Controls</c> from <c>metadataJson</c>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostControlOptionDescriptor.#ctor(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String},System.String,System.String)">
+            <summary>
+            Dynamic module-declared control pill rendered inside <c>F1 -&gt; Controls</c> from <c>metadataJson</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostRumbleRequest">
+            <summary>
+            Dual-motor gamepad haptic rumble command.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostRumbleRequest.#ctor(System.UInt16,System.UInt16,System.UInt32)">
+            <summary>
+            Dual-motor gamepad haptic rumble command.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostTouchPoint">
+            <summary>
+            Normalized touch contact point (0..1 viewport coordinates) for mobile/handheld overlays.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostTouchPoint.#ctor(System.Int64,System.Single,System.Single,System.Single,System.Boolean)">
+            <summary>
+            Normalized touch contact point (0..1 viewport coordinates) for mobile/handheld overlays.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostTouchGestureEvent">
+            <summary>
+            Decoded touch gesture notification (tap, swipe, pinch).
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostTouchGestureEvent.#ctor(System.String,System.Single,System.Single,System.Single)">
+            <summary>
+            Decoded touch gesture notification (tap, swipe, pinch).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostExternalInputSnapshot">
+            <summary>
+            Polled snapshot produced by a hardware gamepad, touch overlay, or mobile/platform <see cref="T:reEngine.Host.Contracts.IHostInputProvider"/>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostExternalInputSnapshot.#ctor(reEngine.Host.Contracts.HostGamepadButtons,System.Single,System.Single,System.Single,System.Single,System.Single,System.Single,System.UInt32,System.Boolean,System.Int32)">
+            <summary>
+            Polled snapshot produced by a hardware gamepad, touch overlay, or mobile/platform <see cref="T:reEngine.Host.Contracts.IHostInputProvider"/>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostInputProvider">
+            <summary>
+            Platform-neutral non-KB/M input provider (SDL3 Xbox/HID gamepads, touch overlays, Android/iOS/macOS controllers).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAspectRatioMode">
+            <summary>
+            Canonical host presentation aspect ratio modes (Standard 18: <c>aspectRatioMode</c>).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostAspectRatioModeCodec">
+            <summary>
+            Normalizes and formats <see cref="T:reEngine.Host.Contracts.HostAspectRatioMode"/> values per Standard 18.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostOverscanCrop">
+            <summary>
+            Pixel edge overscan trim counts (Standard 18: <c>overscanCropPx</c>).
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostOverscanCrop.#ctor(System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Pixel edge overscan trim counts (Standard 18: <c>overscanCropPx</c>).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostViewportRect">
+            <summary>
+            Integer rectangular region in pixel coordinates for viewport blitting and inverse pointer mapping.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostViewportRect.#ctor(System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Integer rectangular region in pixel coordinates for viewport blitting and inverse pointer mapping.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.HostGamepadPortSnapshot">
+            <summary>
+            Per-port SDL3 gamepad snapshot carried on <see cref="P:reEngine.Host.Contracts.HostInputFrame.PadPorts"/> (Ports 0..3).
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Contracts.HostGamepadPortSnapshot.#ctor(System.Int32,System.Boolean,reEngine.Host.Contracts.HostGamepadButtons,System.Single,System.Single,System.Single,System.Single,System.Single,System.Single,System.UInt32)">
+            <summary>
+            Per-port SDL3 gamepad snapshot carried on <see cref="P:reEngine.Host.Contracts.HostInputFrame.PadPorts"/> (Ports 0..3).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostAutomationBridge">
+            <summary>
+            Decoupled automation loopback bridge interface injected solely by Debug/Test host processes.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Contracts.IHostSessionEventCallbacks">
+            <summary>
+            Live session event callbacks invoked when <c>F1</c> controls, scaling, or host hotkeys change state.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostBackendProbe">
+            <summary>
+            Probes OS and hardware driver readiness for all <see cref="T:reEngine.Host.Contracts.HostRenderBackendKind"/> renderers.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostBackendProbe.TryParseBackendKind(System.String,reEngine.Host.Contracts.HostRenderBackendKind@)">
+            <summary>Attempts to parse a canonical or alias backend identifier into <see cref="T:reEngine.Host.Contracts.HostRenderBackendKind"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostFramePacingController">
+            <summary>
+            Manages dynamic VRR frame pacing cadence and late-latch input sampling atop <see cref="T:Foundation.Core.HighResFramePacer"/>
+            without latency-heavy frame-rollback Run-Ahead.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.BaseTargetFps">
+            <summary>Gets the configured base target FPS (<c>0</c> = unlocked).</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.BackgroundFpsCap">
+            <summary>Gets the configured unfocused background FPS cap (<c>0</c> = inherit/uncapped).</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.FastForwardMultiplier">
+            <summary>Gets the clamped fast-forward multiplier (<c>2.0..4.0</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.IsFastForwardActive">
+            <summary>Gets whether fast-forward pacing is currently active.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.IsWindowFocused">
+            <summary>Gets whether the host window currently holds input focus.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.IsVsyncEnabled">
+            <summary>Gets whether swapchain VSync is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.EffectiveTargetFps">
+            <summary>Gets the latest effective FPS applied to <see cref="T:Foundation.Core.HighResFramePacer"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostFramePacingController.CadenceResetCount">
+            <summary>Gets the number of times <see cref="M:Foundation.Core.HighResFramePacer.Reset"/> was invoked due to cadence changes.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostFramePacingController.ComputeEffectiveTargetFps(System.Double,System.Int32,System.Double,System.Boolean,System.Boolean)">
+            <summary>
+            Computes the effective frame rate target from base FPS, unfocused background cap, and clamped fast-forward multiplier.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostFramePacingController.SyncPacer(Foundation.Core.HighResFramePacer,System.Double,System.Int32,System.Double,System.Boolean,System.Boolean,System.Boolean)">
+            <summary>
+            Synchronizes <paramref name="pacer"/> with the current display/focus/fast-forward state and calls
+            <see cref="M:Foundation.Core.HighResFramePacer.Reset"/> immediately whenever the effective FPS changes.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostFramePacingController.PumpLateLatchBeforeTick(System.Func{System.Boolean},System.Action,System.Func{reEngine.Host.Contracts.HostInputFrame},reEngine.Host.Contracts.HostInputFrame@)">
+            <summary>
+            Pumps window events and input providers immediately before the frame tick for minimum-latency late-latch sampling.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostFramePacingController.WaitForNextFrame(Foundation.Core.HighResFramePacer)">
+            <summary>Waits until the next target frame deadline on <paramref name="pacer"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostNativeFileDialog">
+            <summary>
+            Opens native OS file-selection dialogs on Windows via <c>comdlg32.dll</c> without <c>System.Windows.Forms</c>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostNativeFileDialog.ShowSelectMediaDialog">
+            <summary>Opens a native Win32 file picker for BYO game media (<c>.cue/.bin/.iso/.chd/.nes/.fds/.7z/.zip</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostNativeFileDialog.ShowSelectMediaDialog(System.IntPtr,System.String)">
+            <summary>Opens a native Win32 file picker for BYO game media owned by <paramref name="ownerHwnd"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostNativeFileDialog.ShowSelectModuleDialog">
+            <summary>Opens a native Win32 file picker for <c>.recomp</c> modules.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostNativeFileDialog.ShowSelectModuleDialog(System.IntPtr,System.String)">
+            <summary>Opens a native Win32 file picker for <c>.recomp</c> modules owned by <paramref name="ownerHwnd"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostRelativeMouseController">
+            <summary>
+            Tracks and enforces deterministic OS relative mouse capture rules per <c>R08 §4.2</c>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRelativeMouseController.#ctor(System.Action{System.Boolean})">
+            <summary>Initializes a new controller with an optional native capture callback.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRelativeMouseController.IsCaptured">
+            <summary>Gets whether relative mouse capture is currently active.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRelativeMouseController.TryCaptureOnViewportClick(reEngine.Host.Contracts.HostControlMode,System.Boolean,System.Boolean)">
+            <summary>
+            Attempts to capture relative mouse input upon a viewport left-click when
+            <paramref name="mode"/> is <see cref="F:reEngine.Host.Contracts.HostControlMode.ModernWasdMouse"/>, the overlay is closed, and the window is focused.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRelativeMouseController.ReleaseOnOverlayOpen">
+            <summary>Releases relative mouse capture when an overlay drawer or media gate opens.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRelativeMouseController.ReleaseOnFocusLoss">
+            <summary>Releases relative mouse capture when the host window loses OS focus.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRelativeMouseController.TryReleaseOnEscape">
+            <summary>Releases relative mouse capture on <c>Escape</c>, returning <c>true</c> if capture was active and released.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRelativeMouseController.OnControlModeChanged(reEngine.Host.Contracts.HostControlMode)">
+            <summary>Updates capture state when <c>controlMode</c> changes, releasing immediately if switching away from <see cref="F:reEngine.Host.Contracts.HostControlMode.ModernWasdMouse"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostRgbaSurfaceBackend">
+            <summary>
+            Thread-safe RGBA render surface composing engine pixels and <see cref="T:Foundation.Core.PixelOverlayCanvas"/> overlays.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.BackendId">
+            <summary>Gets the canonical backend identifier string.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.ScaleFactor">
+            <summary>Gets or sets the configured integer resolution multiplier (1..8).</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.UseParallelBandBlit">
+            <summary>Gets or sets whether horizontal-band parallel blitting is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.AspectRatioMode">
+            <summary>Gets or sets the active aspect ratio mode applied when blitting content onto <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.OverscanCropPx">
+            <summary>Gets or sets the active overscan pixel crop applied to source frames.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.ContentPixelAspectRatio">
+            <summary>Gets or sets an optional explicit pixel aspect ratio override for <see cref="F:reEngine.Host.Contracts.HostAspectRatioMode.NativePar"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.IsFmvActive">
+            <summary>Gets or sets whether an FMV sequence is active, centering 4:3 FMVs cleanly inside widescreen modes.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.LastContentDestRect">
+            <summary>Gets the destination rectangle of the most recently presented content frame inside <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.LastSourceCropRect">
+            <summary>Gets the source crop rectangle of the most recently presented content frame.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.SurfaceWidth">
+            <summary>Gets the host surface width in pixels.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.SurfaceHeight">
+            <summary>Gets the host surface height in pixels.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas">
+            <summary>Gets the underlying RGBA overlay canvas.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.#ctor(System.Int32,System.Int32,System.Int32,System.String)">
+            <summary>
+            Initializes a new <see cref="T:reEngine.Host.Core.HostRgbaSurfaceBackend"/> with the specified canvas dimensions and backend ID.
+            </summary>
+            <param name="surfaceWidth">Host composite surface width in pixels.</param>
+            <param name="surfaceHeight">Host composite surface height in pixels.</param>
+            <param name="scaleFactor">Initial resolution multiplier (1..8).</param>
+            <param name="backendId">Canonical backend identifier.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.BeginFrame(System.Int32,System.Int32)">
+            <summary>Clears the surface canvas to <c>Surface0</c> at the start of a frame.</summary>
+            <param name="width">Expected source content width.</param>
+            <param name="height">Expected source content height.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte})">
+            <summary>
+            Crops and scales <paramref name="rgba"/> onto <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas"/> using <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.OverscanCropPx"/> and <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.AspectRatioMode"/>.
+            </summary>
+            <param name="width">Source frame width in pixels.</param>
+            <param name="height">Source frame height in pixels.</param>
+            <param name="rgba">Tightly packed RGBA8888 source pixels.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},reEngine.Host.Contracts.HostViewportRect,reEngine.Host.Contracts.HostViewportRect)">
+            <summary>
+            Blits the specified <paramref name="srcCropRect"/> region of <paramref name="rgba"/> into <paramref name="destRect"/>
+            on <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas"/>, clearing surrounding margins to <c>Surface0</c>.
+            </summary>
+            <param name="width">Full source buffer width in pixels.</param>
+            <param name="height">Full source buffer height in pixels.</param>
+            <param name="rgba">Tightly packed RGBA8888 source pixels.</param>
+            <param name="destRect">Destination rectangle in <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas"/> coordinates.</param>
+            <param name="srcCropRect">Source crop rectangle in <paramref name="rgba"/> coordinates.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.PublishSnapshot">
+            <summary>Publishes the current <see cref="P:reEngine.Host.Core.HostRgbaSurfaceBackend.Canvas"/> contents into the thread-safe snapshot buffer.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.TryCopyRgbaFrame(System.Int32@,System.Int32@,System.Byte[]@)">
+            <summary>Copies the most recently published RGBA composite frame.</summary>
+            <param name="width">Captured surface width.</param>
+            <param name="height">Captured surface height.</param>
+            <param name="rgbaBytes">Newly allocated RGBA8888 pixel buffer.</param>
+            <returns><c>true</c> if a valid frame was copied; otherwise <c>false</c>.</returns>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.TryReadSurfaceRect(System.Int32,System.Int32,System.Int32,System.Int32,System.Span{System.Byte})">
+            <summary>Copies a top-down RGBA8888 sub-rectangle from the most recently published surface snapshot.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.SavePng(System.String)">
+            <summary>Writes the latest snapshot as a PNG file to <paramref name="outputPath"/>.</summary>
+            <param name="outputPath">Destination file path.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostRgbaSurfaceBackend.Dispose">
+            <summary>Releases resources owned by this surface backend.</summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostScreenshotService">
+            <summary>
+            Writes lossless RGBA PNG screenshots for <c>F12</c> captures into <c>&lt;dataDir&gt;\screenshots\&lt;moduleId&gt;\</c>
+            (or explicit dump paths) using <see cref="T:Foundation.Core.RgbaPngWriter"/>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostScreenshotService.Capture(reEngine.Host.Contracts.HostScreenshotCaptureMode,System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.String,System.String,System.String,System.String,System.String)">
+            <summary>Captures a clean native or filtered composite frame to disk and returns the capture outcome.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostScreenshotService.ResolveOutputPath(System.String,System.String,System.String,System.String,System.DateTime)">
+            <summary>
+            Resolves a collision-free <c>YYYYMMDD_HHMMSS_&lt;n&gt;.png</c> destination under
+            <c>&lt;dataDir&gt;\screenshots\&lt;moduleId&gt;\</c> (defaulting <c>moduleId</c> to <c>host-demo</c>, or using <paramref name="explicitDumpFramePath"/>).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Core.HostSessionRunner">
+            <summary>
+            Clean-room host runtime orchestrating video, audio, input, overlays, and opt-in loopback test automation.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostSessionRunner.ActiveGraphicsContext">
+            <summary>Gets the active native or CPU graphics context for the running session.</summary>
+        </member>
+        <member name="P:reEngine.Host.Core.HostSessionRunner.ActiveHdPackResolver">
+            <summary>Gets the active HD texture override resolver when configured.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.#ctor(System.Int32,System.Int32,reEngine.Host.Contracts.HostDrawerDescriptor)">
+            <summary>Initializes a new <see cref="T:reEngine.Host.Core.HostSessionRunner"/> with the specified composite surface dimensions and descriptor.</summary>
+            <param name="surfaceWidth">Composite surface width in pixels.</param>
+            <param name="surfaceHeight">Composite surface height in pixels.</param>
+            <param name="descriptor">Optional drawer descriptor configuring initial schema, scale, and execution tier label.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.RunAsync(reEngine.Host.Contracts.HostSessionOptions,reEngine.Host.Contracts.IHostSessionCallbacks,System.Action{System.String},System.Threading.CancellationToken)">
+            <summary>Runs the host presentation, audio, input, and overlay session loop until completion or cancellation.</summary>
+            <param name="options">Session configuration options.</param>
+            <param name="callbacks">Engine frame tick and audio callback receiver.</param>
+            <param name="heartbeatSink">Optional periodic progress text callback.</param>
+            <param name="ct">Cancellation token terminating the session loop.</param>
+            <returns>Final session execution summary and captured output paths.</returns>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.GetOverlayWidgets">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.EnqueuePointerClick(System.Int32,System.Int32,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.EnqueuePointerClick(System.Int32,System.Int32,System.String,System.Boolean)">
+            <summary>Queues a primary or secondary pointer click on the host overlay surface.</summary>
+            <param name="x">Surface-space horizontal coordinate.</param>
+            <param name="y">Surface-space vertical coordinate.</param>
+            <param name="targetId">Optional explicit control identifier.</param>
+            <param name="isRightClick"><c>true</c> for secondary button click; otherwise primary click.</param>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.SetAotCompileState(reEngine.Host.Contracts.HostAotCompileState)">
+            <summary>Updates the active AOT compile progress overlay safely from any background thread.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.SetMediaGateState(System.Boolean,System.String,System.String,System.String)">
+            <summary>Updates the Media Gate visibility, expected checksum, status, and error banner safely across threads.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.UpdateDrawerDescriptor(reEngine.Host.Contracts.HostDrawerDescriptor)">
+            <summary>Updates the active <see cref="T:reEngine.Host.Contracts.HostDrawerDescriptor"/> safely across threads.</summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.EnqueueKeyPress(System.String,System.Collections.Generic.IReadOnlyList{System.String})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Core.HostSessionRunner.TryCaptureFramebufferPng(System.Int32@,System.Int32@,System.Byte[]@)">
+            <inheritdoc />
+        </member>
+        <member name="T:reEngine.Host.Core.HostViewportGeometry">
+            <summary>
+            Computes overscan-cropped source rectangles, aspect-preserving destination rectangles, and normalized pointer coordinates.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostViewportGeometry.ComputeSourceCropRect(System.Int32,System.Int32,reEngine.Host.Contracts.HostOverscanCrop)">
+            <summary>
+            Computes the clamped source crop rectangle inside <paramref name="contentWidth"/> x <paramref name="contentHeight"/>
+            for the supplied <paramref name="crop"/>, guaranteeing dimensions of at least <c>1x1</c>.
+            </summary>
+            <param name="contentWidth">Full uncropped content width in pixels.</param>
+            <param name="contentHeight">Full uncropped content height in pixels.</param>
+            <param name="crop">Requested top, bottom, left, and right overscan trim counts in pixels.</param>
+            <returns>Clamped source rectangle guaranteed to fit within the content buffer with width and height &gt;= 1.</returns>
+        </member>
+        <member name="M:reEngine.Host.Core.HostViewportGeometry.ComputeDestinationRect(System.Int32,System.Int32,System.Int32,System.Int32,reEngine.Host.Contracts.HostAspectRatioMode,System.Nullable{System.Double})">
+            <summary>
+            Computes a centered letterboxed or pillarboxed destination rectangle inside <paramref name="dstWidth"/> x <paramref name="dstHeight"/>
+            honoring <paramref name="mode"/> and optional <paramref name="contentPixelAspectRatio"/>.
+            </summary>
+            <param name="srcWidth">Source content width in pixels.</param>
+            <param name="srcHeight">Source content height in pixels.</param>
+            <param name="dstWidth">Destination surface or window width in pixels.</param>
+            <param name="dstHeight">Destination surface or window height in pixels.</param>
+            <param name="mode">Target aspect ratio and scaling policy.</param>
+            <param name="contentPixelAspectRatio">Optional explicit pixel aspect ratio override used in <see cref="F:reEngine.Host.Contracts.HostAspectRatioMode.NativePar"/>.</param>
+            <returns>Centered destination viewport rectangle inside <paramref name="dstWidth"/> x <paramref name="dstHeight"/>.</returns>
+        </member>
+        <member name="M:reEngine.Host.Core.HostViewportGeometry.ComputeDestinationRect(System.Int32,System.Int32,System.Int32,System.Int32,reEngine.Host.Contracts.HostAspectRatioMode,System.Nullable{System.Double},System.Boolean)">
+            <summary>
+            Computes a centered letterboxed or pillarboxed destination rectangle inside <paramref name="dstWidth"/> x <paramref name="dstHeight"/>
+            honoring <paramref name="mode"/>, optional <paramref name="contentPixelAspectRatio"/>, and <paramref name="isFmvActive"/> (<c>4:3</c> FMV centering inside widescreen).
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostViewportGeometry.ComputeHudAnchorRect(reEngine.Host.Contracts.HostViewportRect,System.Int32,System.Int32,System.Int32,System.Int32,reEngine.Host.Contracts.HostHudAnchorMode,reEngine.Host.Contracts.HostOverscanCrop)">
+            <summary>
+            Computes the anchored HUD bounding rectangle for widescreen/ultrawide layouts honoring <paramref name="anchorMode"/>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Core.HostViewportGeometry.TryMapWindowToContentNormalized(System.Int32,System.Int32,reEngine.Host.Contracts.HostViewportRect,System.Single@,System.Single@)">
+            <summary>
+            Maps a window-space pixel coordinate (<paramref name="winX"/>, <paramref name="winY"/>) into normalized <c>[0..1]</c>
+            content coordinates when the point lies inside <paramref name="destRect"/>.
+            </summary>
+            <param name="winX">Horizontal coordinate in destination pixel space.</param>
+            <param name="winY">Vertical coordinate in destination pixel space.</param>
+            <param name="destRect">Active destination viewport rectangle.</param>
+            <param name="normalizedX">Mapped horizontal coordinate in <c>[0..1]</c>, or <c>-1</c> when outside.</param>
+            <param name="normalizedY">Mapped vertical coordinate in <c>[0..1]</c>, or <c>-1</c> when outside.</param>
+            <returns><c>true</c> if (<paramref name="winX"/>, <paramref name="winY"/>) lies inside <paramref name="destRect"/>; otherwise <c>false</c>.</returns>
+        </member>
+        <member name="T:reEngine.Host.Core.NativeAudioDriverSelector">
+            <summary>
+            Selects and pins the optimal native OS audio backend prior to <c>SDL_InitSubSystem(SDL_INIT_AUDIO)</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostActionBindingSet">
+            <summary>
+            Manages rebindable host recomp actions (<c>hostActionBindings</c>) cleanly separated from per-game bindings.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.#ctor">
+            <summary>Initializes the binding set with canonical Standard R08 §4.3 defaults.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostActionBindingSet.Slots">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.ContainsAction(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.TryGetSlot(System.String,reEngine.Host.Contracts.HostMultiBindSlot@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.TrySetSlotBindingUnique(System.String,System.Int32,System.Int32,System.String@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.TrySetSlotBindingUnique(System.String,System.Int32,System.Int32,reEngine.Host.Input.HostMultiBindRegistry,System.String@)">
+            <summary>
+            Assigns a binding code to <paramref name="actionId"/> column (<c>0..2</c> KB/M, <c>3</c> Gamepad)
+            only if it does not collide within <c>hostActionBindings</c> or <paramref name="gameRegistry"/>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.ClearSlotBinding(System.String,System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.ResetToDefaults">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.IsCodeBound(System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.FormatSummaryLabel(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.ExportJsonMap(System.Collections.Generic.Dictionary{System.String,System.Int32[]})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.ImportJsonMap(System.Collections.Generic.Dictionary{System.String,System.Text.Json.JsonElement})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.HostActionBindingSet.EvaluateHotkeys(System.Collections.Generic.IReadOnlySet{System.Int32},System.Collections.Generic.IReadOnlySet{System.Int32},System.Int32,System.Single,System.UInt32,reEngine.Host.Contracts.HostMenuControllerChord,System.Boolean@)">
+            <summary>
+            Evaluates edge-triggered <see cref="T:reEngine.Host.Input.HostHotkeyFlags"/> across all 8 host actions and <paramref name="menuChord"/>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostControlTierMode">
+            <summary>
+            Standard 33 three-tier input profile selector (<c>inputProfileMode</c>).
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostControlTierMode.GlobalController">
+            <summary>Tier 1: Global engine-wide 1:1 customizable controller and KB/M baseline.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostControlTierMode.PerGameController">
+            <summary>Tier 2: Per-game 1:1 customizable console controller and KB/M bindings.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostControlTierMode.PerGameModern">
+            <summary>Tier 3: Per-game modern semantic PC KB/M + simultaneous gamepad bindings (default).</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostSlotConflict">
+            <summary>
+            Describes a duplicate binding collision or hidden non-visible gamepad slot detected in a control tier.
+            </summary>
+            <param name="ActionId">Target action identifier.</param>
+            <param name="ConflictingActionId">Action identifier holding the conflicting binding.</param>
+            <param name="SlotIndex">Zero-based slot column (<c>0..2</c> KB/M, <c>3</c> visible gamepad, <c>4+</c> hidden gamepad).</param>
+            <param name="BindingCode">Conflicting Standard 18 integer binding code.</param>
+            <param name="Reason">Human-readable conflict explanation.</param>
+        </member>
+        <member name="M:reEngine.Host.Input.HostSlotConflict.#ctor(System.String,System.String,System.Int32,System.Int32,System.String)">
+            <summary>
+            Describes a duplicate binding collision or hidden non-visible gamepad slot detected in a control tier.
+            </summary>
+            <param name="ActionId">Target action identifier.</param>
+            <param name="ConflictingActionId">Action identifier holding the conflicting binding.</param>
+            <param name="SlotIndex">Zero-based slot column (<c>0..2</c> KB/M, <c>3</c> visible gamepad, <c>4+</c> hidden gamepad).</param>
+            <param name="BindingCode">Conflicting Standard 18 integer binding code.</param>
+            <param name="Reason">Human-readable conflict explanation.</param>
+        </member>
+        <member name="P:reEngine.Host.Input.HostSlotConflict.ActionId">
+            <summary>Target action identifier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostSlotConflict.ConflictingActionId">
+            <summary>Action identifier holding the conflicting binding.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostSlotConflict.SlotIndex">
+            <summary>Zero-based slot column (<c>0..2</c> KB/M, <c>3</c> visible gamepad, <c>4+</c> hidden gamepad).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostSlotConflict.BindingCode">
+            <summary>Conflicting Standard 18 integer binding code.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostSlotConflict.Reason">
+            <summary>Human-readable conflict explanation.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostControlTierStore">
+            <summary>
+            Persists and validates all three Standard 33 rebindable control tiers in <c>settings.controls.json</c>.
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostControlTierStore.DefaultFileName">
+            <summary>Canonical configuration filename (<c>settings.controls.json</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.#ctor(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Initializes all three control tiers using defaults from <paramref name="initialSchema"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.ActiveTier">
+            <summary>Gets or sets the active Standard 33 input profile tier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.ActiveSchema">
+            <summary>Gets or sets the baseline schema used when resetting tier defaults.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.ControlMode">
+            <summary>Gets or sets the active PC/console control mode (<c>controlMode</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.MouseSensitivity">
+            <summary>Gets or sets mouse look sensitivity multiplier (<c>mouseSensitivity</c>, clamped <c>0.25..3.0</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.MenuControllerChord">
+            <summary>Gets or sets the controller chord opening the overlay menu (<c>menuControllerChord</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.HostActions">
+            <summary>Gets the rebindable host action bindings (<c>hostActionBindings</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.GlobalController">
+            <summary>Gets Tier 1 (<c>globalController</c>) rebindable KB/M + Gamepad registry.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.PerGameController">
+            <summary>Gets Tier 2 (<c>perGameController</c>) rebindable KB/M + Gamepad registry.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.PerGameModern">
+            <summary>Gets Tier 3 (<c>perGameModern</c>) rebindable KB/M + Gamepad registry.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostControlTierStore.ActiveRegistry">
+            <summary>Gets the registry corresponding to <see cref="P:reEngine.Host.Input.HostControlTierStore.ActiveTier"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.GetRegistry(reEngine.Host.Input.HostControlTierMode)">
+            <summary>Returns the <see cref="T:reEngine.Host.Input.HostMultiBindRegistry"/> associated with <paramref name="tier"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ResetTierToDefaults(reEngine.Host.Input.HostControlTierMode,reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Resets a single tier to conflict-free defaults for <paramref name="schema"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ResetAllToDefaults(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Resets all three tiers to conflict-free defaults for <paramref name="schema"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.TryRebindAction(reEngine.Host.Input.HostControlTierMode,System.String,System.Int32,System.Int32,reEngine.Host.Input.HostSlotConflict@)">
+            <summary>Rebinds an action slot within <paramref name="tier"/> only if no duplicate/hidden conflict exists.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.TryRebindHostAction(System.String,System.Int32,System.Int32,System.String@)">
+            <summary>Rebinds a host recomp action slot only if no collision exists across host actions or <see cref="P:reEngine.Host.Input.HostControlTierStore.ActiveRegistry"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ValidateUniqueSlotsInTier(reEngine.Host.Input.HostControlTierMode)">
+            <summary>Validates that no non-zero binding code collides across multiple slots in <paramref name="tier"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.DetectHiddenSlotConflicts(reEngine.Host.Input.HostControlTierMode)">
+            <summary>Detects hidden non-visible gamepad slots (<c>[1+]</c>) and collisions within <paramref name="tier"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.DetectHiddenSlotConflicts">
+            <summary>Detects hidden non-visible gamepad slots (<c>[1+]</c>) and collisions across all three tiers.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ClearHiddenGamepadSlots">
+            <summary>Clears any hidden <c>[1+]</c> gamepad slots across all three tiers and returns the count cleared.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.SerializeJson(System.Boolean)">
+            <summary>Serializes all three Standard 33 control tiers into Standard 18 <c>settings.controls.json</c> format.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.SerializeDirtyCheckJson">
+            <summary>Serializes a deterministic dirty-check JSON snapshot omitting <c>updatedAtUtc</c>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.DeserializeJson(System.String)">
+            <summary>Deserializes all three Standard 33 control tiers from JSON, preserving defaults for missing sections.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.SaveToFile(System.String)">
+            <summary>Atomically writes <c>settings.controls.json</c> to <paramref name="filePath"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.LoadFromFile(System.String)">
+            <summary>Loads <c>settings.controls.json</c> from <paramref name="filePath"/> if present and valid.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.SaveToConfigDirectory(System.String)">
+            <summary>Saves <see cref="F:reEngine.Host.Input.HostControlTierStore.DefaultFileName"/> inside <paramref name="configDirectory"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.LoadFromConfigDirectory(System.String)">
+            <summary>Loads <see cref="F:reEngine.Host.Input.HostControlTierStore.DefaultFileName"/> from <paramref name="configDirectory"/> if present and valid.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ParseTierMode(System.String)">
+            <summary>Parses a Standard 18 <c>inputProfileMode</c> string or UI label into <see cref="T:reEngine.Host.Input.HostControlTierMode"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ToCanonicalTierId(reEngine.Host.Input.HostControlTierMode)">
+            <summary>Converts <paramref name="mode"/> to its canonical Standard 18 <c>inputProfileMode</c> string.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.ToDisplayLabel(reEngine.Host.Input.HostControlTierMode)">
+            <summary>Formats <paramref name="mode"/> as a concise UI pill label.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostControlTierStore.CycleNextTier(reEngine.Host.Input.HostControlTierMode)">
+            <summary>Cycles to the next Standard 33 control tier.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostHotkeyFlags">
+            <summary>
+            Edge-triggered host hotkey bitmask reported on <see cref="P:reEngine.Host.Contracts.HostInputFrame.HotkeyFlags"/>.
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.None">
+            <summary>No hotkeys asserted on this frame.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.ToggleDrawer">
+            <summary>Toggles the <c>F1</c> settings drawer.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.ToggleHud">
+            <summary>Toggles the <c>F3</c> telemetry HUD overlay.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.DumpFrame">
+            <summary>Triggers a diagnostic frame dump (<c>F12</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.Escape">
+            <summary>Context-aware <c>Escape</c> key press.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.QuickSave">
+            <summary>Requests a VBlank-safe quick save (<c>F5</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.QuickLoad">
+            <summary>Requests a VBlank-safe quick load (<c>F9</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.ToggleFullscreen">
+            <summary>Toggles fullscreen presentation (<c>F11</c> or <c>Alt+Enter</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.FastForward">
+            <summary>Signals fast-forward toggle/hold edge (<c>F6</c> or <c>Grave</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.CutsceneSkip">
+            <summary>Requests skipping the active cutscene (<c>F7</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostHotkeyFlags.TakeScreenshot">
+            <summary>Triggers clean/filtered <c>F12</c> PNG screenshot capture.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostInputMapper">
+            <summary>
+            Maps raw keyboard scancodes, synthetic keys, mouse/wheel, 3-tier multi-binds, and 4-port gamepad/touch providers
+            into immutable non-ref <see cref="T:reEngine.Host.Contracts.HostInputFrame"/> snapshots with repeat suppression and Menu isolation.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.ActiveSchema">
+            <summary>Gets or sets the active input schema preset for the active control tier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.IsMenuOpen">
+            <summary>Gets or sets whether a host or game menu is currently open, isolating Menu D-Pad/Left Stick navigation.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.IsFastForwardToggled">
+            <summary>Gets or sets whether latched fast-forward mode is toggled on.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.ControlTiers">
+            <summary>Gets the Standard 33 three-tier control binding store.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.HostActions">
+            <summary>Gets the rebindable host recomp action bindings (<c>hostActionBindings</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.ControlMode">
+            <summary>Gets or sets the active PC control mode (<c>controlMode</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.MouseSensitivity">
+            <summary>Gets or sets mouse sensitivity multiplier (<c>mouseSensitivity</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.MenuControllerChord">
+            <summary>Gets or sets the gamepad overlay toggle chord (<c>menuControllerChord</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.IsEscapeBoundInPerGameModern">
+            <summary>Returns whether <c>Esc</c> is explicitly bound inside the active <c>perGameModern</c> tier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.ActiveControlTier">
+            <summary>Gets or sets the active Standard 33 control tier (<c>globalController</c>, <c>perGameController</c>, or <c>perGameModern</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.Bindings">
+            <summary>Gets the active tier's multi-bind registry.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.ActiveActions">
+            <summary>Gets the active semantic action identifiers for the current frame.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostInputMapper.JustPressedActions">
+            <summary>Gets the newly pressed semantic action identifiers for the current frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.SetMenuOpen(System.Boolean)">
+            <summary>Sets <see cref="P:reEngine.Host.Input.HostInputMapper.IsMenuOpen"/> explicitly for Standard 33 Menu/Free-Roam context separation.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.SetPointerContentPosition(System.Single,System.Single,System.Boolean)">
+            <summary>Updates normalized content-space pointer coordinates (<c>[0, 1]</c>) mapped from window coordinates.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.IsActionActive(System.String)">
+            <summary>Returns whether <paramref name="actionId"/> was active on the most recently built frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.IsActionJustPressed(System.String)">
+            <summary>Returns whether <paramref name="actionId"/> transitioned to active on the most recently built frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.SetScancodeState(System.Int32,System.Boolean)">
+            <summary>Updates raw keyboard scancode state with repeat filtering enabled.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.SetScancodeState(System.Int32,System.Boolean,System.Boolean)">
+            <summary>Updates raw keyboard scancode state with repeat suppression and edge-triggered hotkey detection.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.InjectSyntheticKey(System.String)">
+            <summary>Injects a synthetic single-key tap by key name (e.g., <c>"F1"</c>, <c>"Enter"</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.InjectSyntheticKey(System.String,System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>Injects a synthetic key tap with optional modifiers (e.g., <c>["Alt"]</c> + <c>"Enter"</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.AccumulateMouse(System.Single,System.Single,System.Int32)">
+            <summary>Accumulates floating-point relative mouse motion and updates mouse button latch state.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.AccumulateMouseWheel(System.Single)">
+            <summary>Accumulates vertical scroll wheel deltas for the current frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.SetMouseButton(System.Int32,System.Boolean)">
+            <summary>Sets a single mouse button state (<c>1..5</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.RegisterProvider(reEngine.Host.Contracts.IHostInputProvider)">
+            <summary>Registers an external gamepad or touch input provider.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.UnregisterProvider(reEngine.Host.Contracts.IHostInputProvider)">
+            <summary>Unregisters an external input provider.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.RequestRumble(reEngine.Host.Contracts.HostRumbleRequest)">
+            <summary>Requests haptic rumble across registered input providers (Port 0 default).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.RequestRumble(System.Int32,reEngine.Host.Contracts.HostRumbleRequest)">
+            <summary>Requests haptic rumble for a specific zero-based controller port (<c>0..3</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.BuildFrame(reEngine.Host.Contracts.HostGamepadButtons,System.Single,System.Single,System.Single,System.Single,System.Single,System.Single)">
+            <summary>Evaluates all inputs, 4-port SDL3 gamepads, Menu isolation, and hotkeys into an immutable <see cref="T:reEngine.Host.Contracts.HostInputFrame"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputMapper.TryMapKeyNameToScancode(System.String,System.Int32@)">
+            <summary>Maps a textual key name (e.g., <c>"F5"</c>, <c>"Grave"</c>, <c>"Enter"</c>) to an SDL3 scancode.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostInputSchemaKind">
+            <summary>
+            Standardized multi-generation host input layout schemas.
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostInputSchemaKind.SchemaA">
+            <summary>Schema A: 3D RPG / Action-Adventure baseline.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostInputSchemaKind.SchemaB">
+            <summary>Schema B: 2D / Top-Down RPG &amp; Simulation baseline.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.HostInputSchemaKind.SchemaC">
+            <summary>Schema C: Platformer / Dual-Stick / C-Button baseline.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostKeybindEntry">
+            <summary>
+            Single action-to-input binding descriptor displayed in summary keybind tables.
+            </summary>
+            <param name="ActionName">Human-readable action label.</param>
+            <param name="PrimaryKey">Primary keyboard/mouse display label.</param>
+            <param name="AlternateInput">Alternate or gamepad display label.</param>
+        </member>
+        <member name="M:reEngine.Host.Input.HostKeybindEntry.#ctor(System.String,System.String,System.String)">
+            <summary>
+            Single action-to-input binding descriptor displayed in summary keybind tables.
+            </summary>
+            <param name="ActionName">Human-readable action label.</param>
+            <param name="PrimaryKey">Primary keyboard/mouse display label.</param>
+            <param name="AlternateInput">Alternate or gamepad display label.</param>
+        </member>
+        <member name="P:reEngine.Host.Input.HostKeybindEntry.ActionName">
+            <summary>Human-readable action label.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostKeybindEntry.PrimaryKey">
+            <summary>Primary keyboard/mouse display label.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostKeybindEntry.AlternateInput">
+            <summary>Alternate or gamepad display label.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostInputSchemas">
+            <summary>
+            Provides normalized Schema A/B/C profiles, label formatting, legacy entries, scancode mapping, and 3-slot multi-bind defaults.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.FormatPresetLabel(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Formats an expressive control profile label without exposing raw Schema A/B/C identifiers.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.Parse(System.String)">
+            <summary>Parses a schema identifier string into <see cref="T:reEngine.Host.Input.HostInputSchemaKind"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.ToShortCode(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Formats <paramref name="kind"/> as its canonical single-letter short code (<c>A</c>, <c>B</c>, or <c>C</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.CycleNext(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Cycles to the next schema in order (<c>A -> B -> C -> A</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.TryMapKeyNameToScancode(System.String,System.Int32@)">
+            <summary>Translates a key name token (e.g., <c>"F5"</c>, <c>"Grave"</c>, <c>"Enter"</c>) to its SDL3 scancode.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.FormatBindingLabel(System.Int32)">
+            <summary>Formats an integer Standard 18 binding code into a concise human-readable UI badge.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.GetBindings(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Returns summary keybind entries for the requested schema.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostInputSchemas.GetDefaultMultiBindSlots(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Returns conflict-free default 3-slot + gamepad bindings for <paramref name="schema"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.HostMultiBindRegistry">
+            <summary>
+            Manages 3-slot simultaneous keyboard/mouse/gamepad action bindings (<c>modernActionBindings</c> /
+            <c>modernControllerBindings</c>) with Standard 18 serialization, conflict detection, and single-edge action tracking.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.#ctor(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Initializes the registry with conflict-free defaults for <paramref name="initialSchema"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostMultiBindRegistry.Slots">
+            <summary>Gets all ordered action binding rows in this registry.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostMultiBindRegistry.ActiveActions">
+            <summary>Gets the set of currently active action identifiers.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.HostMultiBindRegistry.JustPressedActions">
+            <summary>Gets the set of action identifiers that transitioned to active on this frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsActionActive(System.String)">
+            <summary>Returns whether <paramref name="actionId"/> is active on the current frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsActionJustPressed(System.String)">
+            <summary>Returns whether <paramref name="actionId"/> was newly pressed on the current frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.ResetToSchemaDefaults(reEngine.Host.Input.HostInputSchemaKind)">
+            <summary>Resets all bindings to the default multi-bind layout for <paramref name="schema"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.RegisterAction(reEngine.Host.Contracts.HostMultiBindSlot)">
+            <summary>Registers or replaces an action row in the registry.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.TryGetSlot(System.String,reEngine.Host.Contracts.HostMultiBindSlot@)">
+            <summary>Attempts to retrieve the current slot snapshot for <paramref name="actionId"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.SetSlotBinding(System.String,System.Int32,System.Int32)">
+            <summary>Assigns a binding code to the specified action column (<c>0..2</c> KB/M, <c>3</c> Gamepad).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.TrySetSlotBindingUnique(System.String,System.Int32,System.Int32,reEngine.Host.Input.HostSlotConflict@)">
+            <summary>Assigns a binding code only if it does not collide with another slot in the same tier.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsCodeBound(System.Int32)">
+            <summary>Returns whether <paramref name="code"/> is bound to any slot in this registry.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.ClearSlotBinding(System.String,System.Int32)">
+            <summary>Clears the binding code at <paramref name="columnIndex"/> for <paramref name="actionId"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.ValidateUniqueSlots">
+            <summary>Returns all duplicate binding collisions across visible and hidden slots in this registry.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.DetectHiddenSlotConflicts">
+            <summary>Detects invisible gamepad slots (<c>[1+]</c>) and duplicate binding conflicts across the registry.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.ClearHiddenGamepadSlots">
+            <summary>Clears all hidden <c>[1+]</c> gamepad slots and returns how many codes were removed.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.EvaluateFrame(System.Collections.Generic.IReadOnlySet{System.Int32},System.Collections.Generic.IReadOnlySet{System.Int32},System.Int32,System.Single,System.UInt32)">
+            <summary>Evaluates active and edge-triggered actions for the current input frame.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.SerializeJson(System.Boolean)">
+            <summary>Serializes registry bindings into Standard 18 JSON.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.DeserializeJson(System.String)">
+            <summary>Deserializes registry bindings from Standard 18 JSON.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsKeyboardCode(System.Int32)">
+            <summary>Returns whether <paramref name="code"/> is a valid SDL keyboard scancode (<c>4..511</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsMouseOrWheelCode(System.Int32)">
+            <summary>Returns whether <paramref name="code"/> is a valid mouse button or wheel code (<c>1001..1007</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsGamepadCode(System.Int32)">
+            <summary>Returns whether <paramref name="code"/> is a valid gamepad code (<c>2001..2032</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.IsValidBindingCode(System.Int32)">
+            <summary>Returns whether <paramref name="code"/> lies within any supported Standard 18 binding band.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.NormalizeCode(System.Int32)">
+            <summary>Clamps an invalid binding code to <c>0</c> while preserving valid KB/M/Gamepad codes.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.NormalizeGamepadCode(System.Int32)">
+            <summary>Clamps a non-gamepad binding code to <c>0</c> while preserving valid gamepad codes.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.FormatBindingLabel(System.Int32)">
+            <summary>Formats a Standard 18 integer binding code for UI display.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.HostMultiBindRegistry.MouseButtonIndexToBindingCode(System.Int32)">
+            <summary>Converts an SDL mouse button index (<c>1..5</c>) to a Standard 18 binding code.</summary>
+        </member>
+        <member name="T:reEngine.Host.Input.Sdl3GamepadNative">
+            <summary>
+            Minimal SDL3 C-ABI gamepad bindings and native resolver without coupling to <c>Core.Sdl3Native</c>.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Input.Sdl3GamepadProvider">
+            <summary>
+            Polls up to 4 hot-pluggable SDL3 gamepads (Xbox, DualSense, DualShock, Switch Pro, and generic HID controllers)
+            and maps Standard 18 binding codes (<c>2001..2032</c>) plus per-port dual-motor rumble.
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Input.Sdl3GamepadProvider.MaxPorts">
+            <summary>Maximum number of concurrent SDL3 gamepad ports polled (<c>0..3</c>).</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.Sdl3GamepadProvider.StickDeadzone">
+            <summary>Normalized radial axis deadzone threshold applied to left and right analog sticks.</summary>
+        </member>
+        <member name="F:reEngine.Host.Input.Sdl3GamepadProvider.TriggerThreshold">
+            <summary>Normalized analog trigger threshold required to assert digital trigger click bits.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.Sdl3GamepadProvider.ProviderId">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Input.Sdl3GamepadProvider.DeviceName">
+            <summary>Gets the connected Port 0 controller display name, or empty when Port 0 is disconnected.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.Sdl3GamepadProvider.DeviceFamily">
+            <summary>Gets the connected Port 0 controller hardware family, or <c>"Disconnected"</c>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Input.Sdl3GamepadProvider.IsConnected">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Input.Sdl3GamepadProvider.ConnectedPortCount">
+            <summary>Gets the count of currently connected SDL3 gamepad ports (<c>0..4</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.IsPortConnected(System.Int32)">
+            <summary>Returns whether the specified zero-based controller port (<c>0..3</c>) is currently connected.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.GetPortDeviceName(System.Int32)">
+            <summary>Gets the display name of the controller assigned to <paramref name="portIndex"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.GetPortDeviceFamily(System.Int32)">
+            <summary>Gets the classified hardware family of the controller assigned to <paramref name="portIndex"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.Poll">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.PollAllPorts">
+            <summary>Polls all 4 hot-pluggable SDL3 gamepad ports (<c>0..3</c>) and returns their per-port snapshots.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.TryRumble(reEngine.Host.Contracts.HostRumbleRequest)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.TryRumble(System.Int32,reEngine.Host.Contracts.HostRumbleRequest)">
+            <summary>Triggers dual-motor haptic rumble on the controller assigned to <paramref name="portIndex"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.BuildSnapshot(System.UInt32,System.Int16,System.Int16,System.Int16,System.Int16,System.Int16,System.Int16,System.Boolean)">
+            <summary>Builds a normalized Port 0 <see cref="T:reEngine.Host.Contracts.HostExternalInputSnapshot"/> from raw SDL3 button bits and axes.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.BuildSnapshot(System.Int32,System.UInt32,System.Int16,System.Int16,System.Int16,System.Int16,System.Int16,System.Int16,System.Boolean)">
+            <summary>Builds a normalized per-port <see cref="T:reEngine.Host.Contracts.HostGamepadPortSnapshot"/> for <paramref name="portIndex"/> (<c>0..3</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.BuildPortSnapshot(System.Int32,System.UInt32,System.Int16,System.Int16,System.Int16,System.Int16,System.Int16,System.Int16,System.Boolean)">
+            <summary>Builds a normalized <see cref="T:reEngine.Host.Contracts.HostGamepadPortSnapshot"/> from raw SDL3 button bits and axis readings.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.ApplyStickDeadzone(System.Int16,System.Single)">
+            <summary>Normalizes a signed 16-bit SDL axis value into <c>[-1, 1]</c> with radial deadzone rescaling.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.NormalizeTrigger(System.Int16)">
+            <summary>Normalizes a signed 16-bit SDL trigger axis reading into <c>[0, 1]</c>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.MapSdlButtonToBindingCode(System.Int32)">
+            <summary>Maps an SDL3 gamepad button index to a Standard 18 gamepad binding code (<c>2001..2032</c>).</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.ToGamepadMaskBit(System.Int32)">
+            <summary>Converts a Standard 18 gamepad binding code (<c>2001..2032</c>) into its bitmask bit.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.IsGamepadCodePressed(System.UInt32,System.Int32)">
+            <summary>Tests whether <paramref name="bindingCode"/> is asserted in <paramref name="gamepadButtonsMask"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.ClassifyControllerFamily(System.Int32,System.String,System.UInt16)">
+            <summary>Classifies an SDL gamepad into a human-readable controller family label.</summary>
+        </member>
+        <member name="M:reEngine.Host.Input.Sdl3GamepadProvider.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:reEngine.Host.Rendering.D3d12Presenter">
+            <summary>
+            Windows-only DirectX 12 presenter creating <c>ID3D12Device</c> and <c>IDXGISwapChain3</c> over an SDL3 Win32 HWND.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Rendering.D3d12Presenter.BackendKind">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.D3d12Presenter.BackendId">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.D3d12Presenter.GraphicsContext">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.D3d12Presenter.TryInitialize(System.IntPtr,System.Int32,System.Int32,System.String@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.D3d12Presenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.D3d12Presenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},reEngine.Host.Contracts.HostViewportRect,reEngine.Host.Contracts.HostViewportRect)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.D3d12Presenter.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:reEngine.Host.Rendering.Gl33Presenter">
+            <summary>
+            SDL3 OpenGL 3.3 Core presenter uploading RGBA frames to a GL texture and blitting directly to the swapchain backbuffer.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Rendering.Gl33Presenter.BackendKind">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.Gl33Presenter.BackendId">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.Gl33Presenter.GraphicsContext">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.Gl33Presenter.ConfigureSdlAttributes">
+            <summary>Configures required SDL3 OpenGL 3.3 Core attributes prior to window creation.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.Gl33Presenter.TryInitialize(System.IntPtr,System.Int32,System.Int32,System.String@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.Gl33Presenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.Gl33Presenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},reEngine.Host.Contracts.HostViewportRect,reEngine.Host.Contracts.HostViewportRect)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.Gl33Presenter.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:reEngine.Host.Rendering.HdPackResolver">
+            <summary>
+            Path-contained index over <c>&lt;dataDir&gt;\hdpacks\</c> texture overrides keyed by CLUT and rect SHA-256 hashes.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Rendering.HostEdgeScalerPasses">
+            <summary>
+            Deterministic <c>2x</c>/<c>3x</c>/<c>4x</c> edge-aware pixel art scaler (<see cref="F:reEngine.Host.Contracts.HostVideoFilterMode.Xbrz"/>).
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostEdgeScalerPasses.ResolveScaleFactor(System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>Selects <c>2</c>, <c>3</c>, or <c>4</c> scale factor based on requested target dimensions.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostEdgeScalerPasses.ScaleXbrz(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Span{System.Byte},System.Int32)">
+            <summary>Applies deterministic <c>2x</c>, <c>3x</c>, or <c>4x</c> edge-aware scaling into <paramref name="dstRgba"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Rendering.HostRetroFilterPasses">
+            <summary>
+            Deterministic retro CRT, LCD, Scanline, and NTSC Composite YIQ presentation filter passes.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostRetroFilterPasses.ApplyScanlines(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Span{System.Byte},System.Int32,System.Int32)">
+            <summary>Applies alternating horizontal scanline modulation.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostRetroFilterPasses.ApplyCrtLite(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Span{System.Byte},System.Int32,System.Int32)">
+            <summary>Applies <c>CrtLite</c>: sharp bilinear sampling + scanline beam + aperture grille triad + subtle vignette.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostRetroFilterPasses.ApplyLcdGrid(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Span{System.Byte},System.Int32,System.Int32)">
+            <summary>Applies <c>LcdGrid</c>: crisp pixel cells with dark subpixel border + RGB triad mask.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostRetroFilterPasses.ApplyNtscComposite(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Span{System.Byte},System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Applies <c>NtscComposite</c>: RGB-&gt;YIQ conversion, horizontal chroma bleed, subcarrier scanline phase shift, and YIQ-&gt;RGB decode.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Rendering.HostVideoFilterPipeline">
+            <summary>
+            Pure deterministic C# RGBA span pipeline applying universal 24-bit vs 15-bit Bayer 4x4 dithering
+            and all 8 <see cref="T:reEngine.Host.Contracts.HostVideoFilterMode"/> presentation presets.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostVideoFilterPipeline.IsZeroCopyFastPath(reEngine.Host.Contracts.HostVideoFilterMode,System.Boolean,System.Boolean)">
+            <summary>Returns whether the current filter and color flags permit zero-copy fast-path presentation.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostVideoFilterPipeline.ApplyColorQuantizationAndDither(System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Int32,System.Int32,System.Boolean,System.Boolean)">
+            <summary>
+            Applies 15-bit RGB555 quantization and optional 4x4 Bayer ordered dithering across <paramref name="srcRgba"/>.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostVideoFilterPipeline.Process(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32,System.Int32,reEngine.Host.Contracts.HostVideoFilterMode,System.Boolean,System.Boolean,System.Int32,System.Int32@,System.Int32@)">
+            <summary>
+            Processes <paramref name="srcRgba"/> into an output span using internal reusable buffers (zero-copy when fast-path applies).
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.HostVideoFilterPipeline.ApplyFilter(System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Span{System.Byte},System.Int32,System.Int32,reEngine.Host.Contracts.HostVideoFilterMode,System.Boolean,System.Boolean,System.Int32)">
+            <summary>Applies color quantization/dithering and the requested spatial filter directly into caller-provided <paramref name="dstRgba"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Rendering.ParallelCpuPresenter">
+            <summary>
+            Deterministic 16px horizontal-band parallel CPU presenter and <see cref="T:reEngine.Host.Contracts.IHostRenderBackend"/> surface.
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Rendering.ParallelCpuPresenter.BandHeight">
+            <summary>Fixed scanline height per parallel rasterization band.</summary>
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.BackendKind">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.BackendId">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.GraphicsContext">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.SurfaceWidth">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.SurfaceHeight">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.ScaleFactor">
+            <summary>Gets or sets the configured integer resolution multiplier (1..8).</summary>
+        </member>
+        <member name="P:reEngine.Host.Rendering.ParallelCpuPresenter.Canvas">
+            <summary>Gets the backing RGBA overlay canvas used in headless/CPU mode.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.#ctor">
+            <summary>Initializes a default 1280x720 <see cref="T:reEngine.Host.Rendering.ParallelCpuPresenter"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.#ctor(System.Int32,System.Int32,System.Int32)">
+            <summary>Initializes a <see cref="T:reEngine.Host.Rendering.ParallelCpuPresenter"/> with explicit backing surface dimensions.</summary>
+            <param name="surfaceWidth">Host backing surface width in pixels.</param>
+            <param name="surfaceHeight">Host backing surface height in pixels.</param>
+            <param name="scaleFactor">Initial resolution multiplier (1..8).</param>
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.TryInitialize(System.IntPtr,System.Int32,System.Int32,System.String@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.BeginFrame(System.Int32,System.Int32)">
+            <summary>Clears the backing CPU surface at the start of a frame.</summary>
+            <param name="width">Expected source width.</param>
+            <param name="height">Expected source height.</param>
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},reEngine.Host.Contracts.HostViewportRect,reEngine.Host.Contracts.HostViewportRect)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.TryCopyRgbaFrame(System.Int32@,System.Int32@,System.Byte[]@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.SavePng(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.ParallelCpuPresenter.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:reEngine.Host.Rendering.VulkanPresenter">
+            <summary>
+            Clean-room Vulkan 1.x presenter creating a native surface, device, swapchain, and staging upload pipeline.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Rendering.VulkanPresenter.BackendKind">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.VulkanPresenter.BackendId">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Rendering.VulkanPresenter.GraphicsContext">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.VulkanPresenter.TryInitialize(System.IntPtr,System.Int32,System.Int32,System.String@)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.VulkanPresenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.VulkanPresenter.PresentRgba(System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},reEngine.Host.Contracts.HostViewportRect,reEngine.Host.Contracts.HostViewportRect)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Rendering.VulkanPresenter.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:reEngine.Host.Settings.HostSettingsStore">
+            <summary>
+            Host-layer facade implementing <see cref="T:reEngine.Core.Updates.IReEngineSettingsStore"/> over <see cref="T:reEngine.Core.Updates.SettingsDomainStore"/> with live contract mapping.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.#ctor(System.String,System.String)">
+            <summary>Initializes a new <see cref="T:reEngine.Host.Settings.HostSettingsStore"/> bound to <paramref name="dataDirectory"/>.</summary>
+            <param name="dataDirectory">Application or module data directory root.</param>
+            <param name="coreConfigPathOverride">Optional explicit rooted override path for <c>settings.json</c>.</param>
+        </member>
+        <member name="P:reEngine.Host.Settings.HostSettingsStore.ConfigDirectory">
+            <inheritdoc />
+        </member>
+        <member name="P:reEngine.Host.Settings.HostSettingsStore.DataDirectory">
+            <summary>Gets the resolved data directory root.</summary>
+        </member>
+        <member name="P:reEngine.Host.Settings.HostSettingsStore.DomainStore">
+            <summary>Gets the underlying <see cref="T:reEngine.Core.Updates.SettingsDomainStore"/> instance.</summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.LoadOrMigrate">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.SaveAll(reEngine.Core.Updates.ReEngineSettingsBundle)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.SaveCore(reEngine.Core.Updates.ReEngineSettings)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.SaveVideo(reEngine.Core.Updates.ReEngineVideoSettings)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.SaveAudio(reEngine.Core.Updates.ReEngineAudioSettings)">
+            <inheritdoc />
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ToHostAudioMixerSettings(reEngine.Core.Updates.ReEngineAudioSettings)">
+            <summary>Maps persisted <see cref="T:reEngine.Core.Updates.ReEngineAudioSettings"/> into an immutable <see cref="T:reEngine.Host.Contracts.HostAudioMixerSettings"/> snapshot.</summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ToHostVideoState(reEngine.Core.Updates.ReEngineVideoSettings,reEngine.Core.Updates.ReEngineSettings)">
+            <summary>Maps persisted <see cref="T:reEngine.Core.Updates.ReEngineVideoSettings"/> and <see cref="T:reEngine.Core.Updates.ReEngineSettings"/> into <see cref="T:reEngine.Host.Contracts.HostVideoPresentationState"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ToExecutionResilienceOptions(reEngine.Core.Updates.ReEngineSettings,System.String,System.Boolean)">
+            <summary>Builds <see cref="T:reEngine.Host.Contracts.HostExecutionResilienceOptions"/> from persisted core settings and optional Safe Mode state.</summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ApplyHostChanges(reEngine.Core.Updates.ReEngineSettingsBundle,reEngine.Host.Contracts.HostVideoPresentationState,reEngine.Host.Contracts.HostAudioMixerSettings,System.Nullable{System.Boolean},System.String,System.Nullable{System.Int32},System.Nullable{reEngine.Host.Contracts.HostAspectRatioMode},System.Nullable{reEngine.Host.Contracts.HostOverscanCrop},System.Nullable{System.Boolean},System.Nullable{System.Boolean},System.String,System.Nullable{System.Boolean},System.String,System.Nullable{System.Boolean},System.Nullable{System.Boolean},System.Nullable{System.Boolean},System.Boolean,System.Nullable{System.Boolean})">
+            <summary>
+            Applies host runtime changes onto <paramref name="bundle"/>, enforces domain invariants, and optionally persists atomically.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ClearSafeMode">
+            <summary>Clears any uncleared crash sentinel and resets persisted <c>isSafeModeActive</c> to <c>false</c>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ClearSafeMode(reEngine.Core.Updates.ReEngineSettingsBundle,System.Boolean)">
+            <summary>Clears any uncleared crash sentinel and resets <c>isSafeModeActive</c> on <paramref name="bundle"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Settings.HostSettingsStore.ApplyInMemorySafeMode(reEngine.Host.Contracts.HostSessionOptions,reEngine.Core.Execution.BootCrashCheckResult)">
+            <summary>
+            Applies Safe Mode overrides strictly in memory (disabling HD packs and unsafe GPU backends without touching saved disk config).
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.AudioTabView">
+            <summary>
+            Immediate-mode renderer and pointer click dispatcher for the <c>F1</c> drawer <c>Audio</c> tab.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.AudioTabView.ContentBottomY">
+            <summary>Gets the bottom Y coordinate occupied by rendered Audio tab content.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.AudioTabView.Render(Foundation.Core.PixelOverlayCanvas,System.Drawing.Rectangle,reEngine.Host.Ui.F1SettingsDrawerView,reEngine.Host.Contracts.HostDrawerDescriptor)">
+            <summary>Renders the Audio mixer, DSP filter, and Sound Test audition controls into <paramref name="body"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.AudioTabView.GetWidgets">
+            <summary>Returns interactive widget bounds emitted by the latest render pass.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.AudioTabView.TryHandleClick(System.Int32,System.Int32,System.String,System.Boolean)">
+            <summary>Processes a pointer click on the Audio tab.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.ControlsTabView">
+            <summary>
+            Renders and handles clicks for input profiles, PC camera/mouse controls, menu chord, and per-game <c>ControlOptions</c>.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.ControlsTabView.SelectedChoices">
+            <summary>Gets the current selected choice per <c>optionId</c>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.ControlsTabView.CycleSchemaButtonRect">
+            <summary>Gets the bounds of the profile cycle button rendered inside the Controls tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.ControlsTabView.ContentBottomY">
+            <summary>Gets the bottom Y coordinate occupied by rendered Controls tab content.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.ControlsTabView.EventCallbacks">
+            <summary>Gets or sets live session event callbacks notified when a control option changes.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.ControlsTabView.GetSelectedChoice(System.String)">
+            <summary>Returns the currently selected choice for <paramref name="optionId"/>, or <see langword="null"/> if unset.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.ControlsTabView.SetSelectedChoice(System.String,System.String)">
+            <summary>Sets the selected choice for <paramref name="optionId"/> programmatically.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.ControlsTabView.Render(Foundation.Core.PixelOverlayCanvas,System.Drawing.Rectangle,reEngine.Host.Input.HostInputSchemaKind,System.Collections.Generic.IReadOnlyList{reEngine.Host.Contracts.HostControlOptionDescriptor})">
+            <summary>Renders the Controls tab into <paramref name="bodyRect"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.ControlsTabView.GetWidgets">
+            <summary>Returns interactive widget bounds produced by the most recent render pass.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.ControlsTabView.TryHandleClick(System.Int32,System.Int32,System.String,reEngine.Host.Input.HostInputMapper,reEngine.Host.Input.HostInputSchemaKind@)">
+            <summary>Processes a pointer click on the Controls tab using <see cref="P:reEngine.Host.Ui.ControlsTabView.EventCallbacks"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.ControlsTabView.TryHandleClick(System.Int32,System.Int32,System.String,reEngine.Host.Input.HostInputMapper,reEngine.Host.Input.HostInputSchemaKind@,reEngine.Host.Contracts.IHostSessionEventCallbacks)">
+            <summary>Processes a pointer click on the Controls tab and notifies <paramref name="eventCallbacks"/> on option changes.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.F1SettingsDrawerView">
+            <summary>
+            Immediate-mode 6-tab F1 settings drawer rendered directly onto <see cref="T:Foundation.Core.PixelOverlayCanvas"/> with live callback dispatch.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsOpen">
+            <summary>Gets or sets whether the F1 drawer is currently visible.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ActiveTab">
+            <summary>Gets or sets the active tab shown inside the drawer.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.SelectedBackend">
+            <summary>Gets or sets the currently selected render backend.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ResolutionScale">
+            <summary>Gets or sets the active integer resolution scale multiplier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.SelectedSchema">
+            <summary>Gets or sets the active Standard 33 preset selection.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ExecutionTierLabel">
+            <summary>Gets or sets the execution tier label displayed in the System tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsFullscreen">
+            <summary>Gets or sets whether fullscreen mode is active.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsHdTexturePackEnabled">
+            <summary>Gets or sets whether HD texture packs are enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.FallbackBanner">
+            <summary>Gets or sets an optional backend fallback diagnostic banner shown in the Video tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.AspectRatioMode">
+            <summary>Gets or sets the active presentation aspect ratio mode.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.OverscanCropPx">
+            <summary>Gets or sets the active pixel edge overscan crop trim.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsFastForwardEnabled">
+            <summary>Gets or sets whether runtime fast-forward is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.DisplayMode">
+            <summary>Gets or sets the active host window display mode.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsVsyncEnabled">
+            <summary>Gets or sets whether swapchain vertical sync is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.HudAnchorMode">
+            <summary>Gets or sets the active Widescreen HUD anchor policy.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.VideoFilterMode">
+            <summary>Gets or sets the active live presentation filter preset.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsTrueColor24BitEnabled">
+            <summary>Gets or sets whether 24-bit internal RGBA color is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsDitheringEnabled">
+            <summary>Gets or sets whether 15-bit quantization + 4x4 Bayer dithering is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ScreenshotCaptureMode">
+            <summary>Gets or sets the <c>F12</c> screenshot capture source mode.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.UiTextScale">
+            <summary>Gets or sets the active overlay UI text scale multiplier (<c>0.75..2.0</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.FrameRateMode">
+            <summary>Gets or sets the active framerate cadence mode.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.TargetFps">
+            <summary>Gets or sets the target frame rate (<c>0</c> = Max / Unlocked).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ControlMode">
+            <summary>Gets or sets the active camera/movement control mode.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.MouseSensitivity">
+            <summary>Gets or sets mouse look sensitivity multiplier.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.MenuControllerChord">
+            <summary>Gets or sets the gamepad overlay toggle chord.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsFpsOverlayVisible">
+            <summary>Gets or sets whether the F3 FPS overlay HUD is toggled on.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.IsCleanCaptureModeEnabled">
+            <summary>Gets or sets whether Clean-Capture mode hides host overlays during screenshots/streaming.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ShouldEnableRuntimeLogs">
+            <summary>Gets or sets whether diagnostic runtime logging is enabled.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.FastForwardMultiplier">
+            <summary>Gets or sets the fast-forward speed multiplier (<c>2x..4x</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.FocusedControlId">
+            <summary>Gets or sets the currently focused control identifier for controller navigation.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ActiveTabScrollOffset">
+            <summary>Gets or sets the scroll offset for the currently active tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.QuitRequested">
+            <summary>Gets or sets whether the user explicitly requested quitting via <c>Quit Game</c>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.AudioSettings">
+            <summary>Gets or sets the active audio DSP mixer settings displayed in the Audio tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.AudioOutputDevices">
+            <summary>Gets or sets enumerated OS audio playback endpoints displayed in the Audio tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.SoundTestService">
+            <summary>Gets or sets the Sound Test jukebox service bound to the Audio tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ActiveResilience">
+            <summary>Gets or sets active execution resilience options displayed in the System tab.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.EventCallbacks">
+            <summary>Gets or sets live session event callbacks invoked when interactive drawer controls change state.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ControlTierStore">
+            <summary>Gets or sets an optional 3-tier control store bound to the Keybinds and Controls tabs.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.OnBrowseMediaRequested">
+            <summary>Gets or sets a file-picker callback invoked when <c>Change Media...</c> is clicked.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.OnBrowseModuleRequested">
+            <summary>Gets or sets a file-picker callback invoked when <c>Load .recomp...</c> is clicked.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.AudioTab">
+            <summary>Gets the Audio sub-view.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.ControlsTab">
+            <summary>Gets the Controls sub-view.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.KeybindsTab">
+            <summary>Gets the Keybinds sub-view.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F1SettingsDrawerView.SystemTab">
+            <summary>Gets the System sub-view.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.Render(Foundation.Core.PixelOverlayCanvas,reEngine.Host.Contracts.HostDrawerDescriptor)">
+            <summary>Renders the drawer using the bound registry or a default registry.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.Render(Foundation.Core.PixelOverlayCanvas,reEngine.Host.Contracts.HostDrawerDescriptor,reEngine.Host.Input.HostMultiBindRegistry)">
+            <summary>Renders the drawer against the provided <paramref name="registry"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.GetWidgets">
+            <summary>Returns widget geometry for the open drawer and active tab controls.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.TryHandleClick(System.Int32,System.Int32,System.String,reEngine.Host.Input.HostInputMapper)">
+            <summary>Processes a primary pointer click inside the drawer.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.TryHandleClick(System.Int32,System.Int32,System.String,reEngine.Host.Input.HostInputMapper,System.Boolean)">
+            <summary>Processes a primary or secondary (right) pointer click inside the drawer.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.TryActivateControl(System.String,reEngine.Host.Input.HostInputMapper,System.Boolean)">
+            <summary>Activates a focused control programmatically by identifier (used by controller navigation).</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.TryHandleMouseWheel(System.Single)">
+            <summary>Processes vertical mouse-wheel scrolling on the open drawer's active tab.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.ScrollActiveTab(System.Int32)">
+            <summary>Scrolls the active drawer tab by <paramref name="deltaSteps"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.TryCaptureInputCode(System.Int32,reEngine.Host.Input.HostInputMapper)">
+            <summary>Forwards an input binding code to the active Keybinds capture cell.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F1SettingsDrawerView.GetTabControlId(reEngine.Host.Contracts.HostDrawerTabId)">
+            <summary>Returns the canonical automation control identifier for a drawer tab.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.F3HudTelemetry">
+            <summary>
+            Telemetry snapshot rendered inside the F3 overlay pill.
+            </summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F3HudTelemetry.#ctor(System.Double,System.Double,System.String,System.Int32,System.String,System.Double)">
+            <summary>
+            Telemetry snapshot rendered inside the F3 overlay pill.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.AspectRatioLabel">
+            <summary>Gets or sets an optional aspect ratio display badge shown on the HUD strip.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.IsFastForwardEnabled">
+            <summary>Gets or sets whether fast-forward mode is active.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.ConnectedPadCount">
+            <summary>Gets or sets the count of connected controller ports (<c>0..4</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.VideoFilterLabel">
+            <summary>Gets or sets an optional live presentation filter badge label.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.DisplayModeLabel">
+            <summary>Gets or sets an optional host display mode badge label.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.IsSafeModeActive">
+            <summary>Gets or sets whether crash-recovery Safe Mode is active.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.IsAudioMuted">
+            <summary>Gets or sets whether master audio output is currently muted.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.FrameRateModeBadge">
+            <summary>Gets or sets the framerate cadence badge (<c>"[ORIG]"</c>, <c>"[ENH]"</c>, or <c>"[MAX]"</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.FastForwardMultiplier">
+            <summary>Gets or sets the active fast-forward multiplier (<c>2x..4x</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.IsCleanCaptureModeEnabled">
+            <summary>Gets or sets whether Clean-Capture Mode suppresses all F3 HUD rendering.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudTelemetry.UiTextScale">
+            <summary>Gets or sets the active overlay UI text scale (<c>0.75..2.0</c>).</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.F3HudOverlayView">
+            <summary>
+            Renders and measures the scaled 2-line F3 performance telemetry overlay on <see cref="T:Foundation.Core.PixelOverlayCanvas"/>.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudOverlayView.IsVisible">
+            <summary>Gets or sets whether the F3 HUD overlay is visible.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudOverlayView.IsCleanCaptureModeEnabled">
+            <summary>Gets or sets whether Clean-Capture Mode is forcing the F3 HUD hidden.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.F3HudOverlayView.CurrentBounds">
+            <summary>Gets the bounds of the rendered F3 HUD pill.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F3HudOverlayView.Render(Foundation.Core.PixelOverlayCanvas,reEngine.Host.Ui.F3HudTelemetry)">
+            <summary>Renders <paramref name="telemetry"/> onto <paramref name="canvas"/> unless hidden or suppressed by Clean-Capture Mode.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.F3HudOverlayView.TryBuildWidgetBounds">
+            <summary>Builds automation widget bounds when visible and not suppressed by Clean-Capture Mode.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.FirstRunMediaGateView">
+            <summary>
+            Full-screen Deep Slate Glass clean-room media gate prompting optical/ROM verification without bundling retail assets.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.IsVisible">
+            <summary>Gets or sets whether the full-screen Media Gate overlay is currently visible.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.StatusMessage">
+            <summary>Gets or sets the live status prompt displayed inside the drop zone.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.ErrorMessage">
+            <summary>Gets or sets an optional validation error banner displayed inside the drop zone.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.ExpectedSha256">
+            <summary>Gets or sets the expected SHA-256 verification digest displayed in the header.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.UiTextScale">
+            <summary>Gets or sets the active overlay UI text scale (<c>0.75..2.0</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.FocusedControlId">
+            <summary>Gets or sets the currently focused Media Gate button identifier for controller navigation.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.OnBrowseRequested">
+            <summary>Gets or sets the file-picker callback invoked when <c>Select Media...</c> is activated.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.OnBrowseModuleRequested">
+            <summary>Gets or sets the module-picker callback invoked when <c>Select .recomp Module...</c> is activated.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.OnFileDropped">
+            <summary>Gets or sets an optional drag-and-drop validation callback returning a non-empty error if rejected.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.OnDemoCartRequested">
+            <summary>Gets or sets an optional callback invoked when <c>Launch Demo / Test Cart</c> is activated.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.VerifiedMediaPath">
+            <summary>Gets the verified retail media path selected or dropped by the user.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.SelectedModulePath">
+            <summary>Gets the selected <c>.recomp</c> module path chosen or dropped by the user.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.FirstRunMediaGateView.IsDemoCartSelected">
+            <summary>Gets whether the user explicitly chose <c>Launch Demo / Test Cart</c>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.FirstRunMediaGateView.Render(Foundation.Core.PixelOverlayCanvas,reEngine.Host.Contracts.HostDrawerDescriptor)">
+            <summary>Renders the full-screen Deep Slate Glass Media Gate onto <paramref name="canvas"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.FirstRunMediaGateView.GetWidgets">
+            <summary>Returns automation and controller-navigation bounds for the visible Media Gate.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.FirstRunMediaGateView.HandleDroppedFile(System.String)">
+            <summary>Validates and ingests a file dropped onto the Media Gate window.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.FirstRunMediaGateView.TryHandleClick(System.Int32,System.Int32,System.String)">
+            <summary>Processes a pointer click or controller activation inside the Media Gate.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.HostAotCompileOverlayView">
+            <summary>
+            Full-screen glass progress overlay displayed while compiling AOT modules without blocking the SDL event loop.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.HostAotCompileOverlayView.State">
+            <summary>Gets or sets the active AOT compilation progress snapshot.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.HostAotCompileOverlayView.UiTextScale">
+            <summary>Gets or sets the active overlay UI text scale (<c>0.75..2.0</c>).</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.HostAotCompileOverlayView.SpinnerTick">
+            <summary>Gets the current animation frame counter incremented on each visible render pass.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostAotCompileOverlayView.Render(Foundation.Core.PixelOverlayCanvas,reEngine.Host.Contracts.HostDrawerDescriptor)">
+            <summary>Renders the full-screen glass AOT compile overlay when <see cref="P:reEngine.Host.Contracts.HostAotCompileState.IsCompiling"/> is <see langword="true"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostAotCompileOverlayView.GetWidgets">
+            <summary>Returns widget geometry for automation inspection while compiling.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostAotCompileOverlayView.RunWithResponsivePumpAsync``1(System.Func{System.Action{reEngine.Host.Contracts.HostAotCompileState},System.Threading.CancellationToken,System.Threading.Tasks.Task{``0}},System.Action{reEngine.Host.Contracts.HostAotCompileState},System.Threading.CancellationToken)">
+            <summary>Runs background AOT compilation while pumping SDL events and progress renders at ~60 Hz.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostAotCompileOverlayView.RunWithResponsivePumpAsync(System.Func{System.Action{reEngine.Host.Contracts.HostAotCompileState},System.Threading.CancellationToken,System.Threading.Tasks.Task},System.Action{reEngine.Host.Contracts.HostAotCompileState},System.Threading.CancellationToken)">
+            <summary>Runs background AOT compilation while invoking <paramref name="pumpFrame"/> on each frame interval.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.HostDrawerControllerNav">
+            <summary>
+            Translates gamepad <c>D-Pad</c>, <c>Left Stick</c>, <c>LB/RB</c>, and <c>A/B/X/Y</c> inputs into F1 drawer and Media Gate focus navigation.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.HostDrawerControllerNav.FocusedControlId">
+            <summary>Gets or sets the currently focused control identifier.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostDrawerControllerNav.TryProcessFrame(reEngine.Host.Contracts.HostInputFrame,reEngine.Host.Ui.F1SettingsDrawerView,reEngine.Host.Input.HostInputMapper)">
+            <summary>Processes controller navigation for an open <see cref="T:reEngine.Host.Ui.F1SettingsDrawerView"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostDrawerControllerNav.TryProcessMediaGate(reEngine.Host.Contracts.HostInputFrame,reEngine.Host.Ui.FirstRunMediaGateView)">
+            <summary>Processes controller focus navigation for a visible <see cref="T:reEngine.Host.Ui.FirstRunMediaGateView"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.HostOverlayTextRenderer">
+            <summary>
+            Renders legible, coverage-sampled scaled bitmap text onto <see cref="T:Foundation.Core.PixelOverlayCanvas"/> using an intermediate
+            <see cref="F:reEngine.Host.Ui.HostOverlayTextRenderer.BaseScale"/> (<c>1.45x</c>) multiplied by user <c>uiTextScale</c> (<c>0.75x..2.0x</c>).
+            </summary>
+        </member>
+        <member name="F:reEngine.Host.Ui.HostOverlayTextRenderer.BaseScale">
+            <summary>Base legibility multiplier producing ~10-11px glyphs at <c>uiTextScale = 1.0</c>.</summary>
+        </member>
+        <member name="F:reEngine.Host.Ui.HostOverlayTextRenderer.MinUiTextScale">
+            <summary>Minimum allowed user text scale multiplier.</summary>
+        </member>
+        <member name="F:reEngine.Host.Ui.HostOverlayTextRenderer.MaxUiTextScale">
+            <summary>Maximum allowed user text scale multiplier.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostOverlayTextRenderer.ClampUiTextScale(System.Double)">
+            <summary>Clamps <paramref name="uiTextScale"/> cleanly to <c>[0.75, 2.0]</c>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostOverlayTextRenderer.GetLineHeight(System.Double)">
+            <summary>Returns recommended vertical line advance in pixels for <paramref name="uiTextScale"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostOverlayTextRenderer.GetRowHeight(System.Double)">
+            <summary>Returns recommended interactive button/row height in pixels for <paramref name="uiTextScale"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostOverlayTextRenderer.MeasureText(System.String,System.Double)">
+            <summary>Measures pixel bounds of <paramref name="text"/> at <paramref name="uiTextScale"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostOverlayTextRenderer.FitText(System.String,System.Int32,System.Double)">
+            <summary>Fits single-line <paramref name="text"/> inside <paramref name="maxWidthPx"/> with <c>".."</c> ellipsis if needed.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.HostOverlayTextRenderer.DrawText(Foundation.Core.PixelOverlayCanvas,System.Int32,System.Int32,System.String,Foundation.Core.RgbaColor,System.Double)">
+            <summary>Renders 2x2 coverage-sampled text onto <paramref name="canvas"/>.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.HostTouchOverlayView">
+            <summary>
+            Cross-platform <see cref="T:reEngine.Host.Contracts.IHostInputProvider"/> rendering responsive portrait/landscape touch controls onto
+            <see cref="T:Foundation.Core.PixelOverlayCanvas"/> with hit-testing and swipe/pinch gesture decoding.
+            </summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.KeybindsTabView">
+            <summary>
+            Renders the unified 5-column multi-bind matrix (<c>Action | 1st | 2nd | 3rd | Gamepad</c>) for game and host actions.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.CapturingActionId">
+            <summary>Gets the action identifier currently awaiting input capture, or <see langword="null"/>.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.CapturingColumnIndex">
+            <summary>Gets the slot column index (<c>0..2</c> KB/M, <c>3</c> Gamepad) currently awaiting capture.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.CapturingDisplayName">
+            <summary>Gets the human-readable name of the action currently awaiting capture.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.ScrollOffset">
+            <summary>Gets the current vertical row scroll offset.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.TotalRowCount">
+            <summary>Gets the total row count in the most recently rendered matrix.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.MaxScrollOffset">
+            <summary>Gets the maximum valid scroll offset from the most recent render pass.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.IsCapturing">
+            <summary>Gets whether a binding cell is currently listening for keyboard/mouse/gamepad input.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.LastConflictMessage">
+            <summary>Gets the latest slot collision warning message if a conflicting rebind was blocked.</summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.KeybindsTabView.EventCallbacks">
+            <summary>Gets or sets live session event callbacks notified when host action bindings change.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.ClearCapture">
+            <summary>Cancels active input capture and clears any pending conflict banner.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.ScrollBy(System.Int32,System.Int32)">
+            <summary>Scrolls the keybind table by <paramref name="deltaRows"/> clamped to <paramref name="totalCount"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.Render(Foundation.Core.PixelOverlayCanvas,System.Drawing.Rectangle,reEngine.Host.Input.HostInputSchemaKind,reEngine.Host.Input.HostControlTierStore)">
+            <summary>Renders the 3-tier selector bar and unified game + host 5-column multi-bind grid using <paramref name="tierStore"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.Render(Foundation.Core.PixelOverlayCanvas,System.Drawing.Rectangle,reEngine.Host.Input.HostInputSchemaKind,reEngine.Host.Input.HostMultiBindRegistry)">
+            <summary>Renders the 5-column multi-bind grid directly against <paramref name="registry"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.GetWidgets">
+            <summary>Returns interactive widget bounds produced by the most recent render pass.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.TryHandleClick(System.Int32,System.Int32,System.String,reEngine.Host.Input.HostControlTierStore,reEngine.Host.Input.HostInputSchemaKind,System.Boolean)">
+            <summary>Handles pointer clicks including 3-tier switching and host action bindings against <paramref name="tierStore"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.TryHandleClick(System.Int32,System.Int32,System.String,reEngine.Host.Input.HostMultiBindRegistry,reEngine.Host.Input.HostInputSchemaKind,System.Boolean)">
+            <summary>Handles pointer clicks against <paramref name="registry"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.TryCaptureInputCode(System.Int32,reEngine.Host.Input.HostControlTierStore)">
+            <summary>Captures an incoming input code into the active game or host slot of <paramref name="tierStore"/>.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.KeybindsTabView.TryCaptureInputCode(System.Int32,reEngine.Host.Input.HostMultiBindRegistry)">
+            <summary>Captures an incoming input code into <paramref name="registry"/> while preventing silent slot overrides.</summary>
+        </member>
+        <member name="T:reEngine.Host.Ui.SystemTabView">
+            <summary>
+            Immediate-mode renderer and pointer click dispatcher for the <c>F1</c> drawer <c>System</c> tab.
+            </summary>
+        </member>
+        <member name="P:reEngine.Host.Ui.SystemTabView.ContentBottomY">
+            <summary>Gets the bottom Y coordinate occupied by rendered System tab content.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.SystemTabView.Render(Foundation.Core.PixelOverlayCanvas,System.Drawing.Rectangle,reEngine.Host.Ui.F1SettingsDrawerView,reEngine.Host.Contracts.HostDrawerDescriptor,System.Drawing.Rectangle@)">
+            <summary>Renders System execution tier, session actions, resilience toggles, and Quit Game.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.SystemTabView.GetWidgets">
+            <summary>Returns interactive widget bounds emitted by the latest render pass.</summary>
+        </member>
+        <member name="M:reEngine.Host.Ui.SystemTabView.TryHandleClick(System.Int32,System.Int32,System.String,System.Boolean)">
+            <summary>Processes a pointer click inside the System tab.</summary>
+        </member>
+    </members>
+</doc>
