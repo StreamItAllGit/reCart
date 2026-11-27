@@ -1,6 +1,6 @@
-# reCart — Architecture & Engineering (`v0.1.3` Live -> `v0.2.0`–`v1.0.0` Backend Design)
+# reCart — Architecture & Engineering (`v0.1.4` Live -> `v0.2.0`–`v1.0.0` Backend Design)
 
-Architecture specification for **`reCart`** (3-way alias `reCart` <-> `reCartOne` <-> `reNes`; workspace directory `Personal/reCartOne`; solution `Dev\reCart.slnx`). Built cleanly on **`Foundation v0.5.5`** and **`reEngine v0.6.2`** (`reEngine.Core`, `reEngine.Host.dll`). Keep `Foundation\`, `reEngine\`, `reStation\`, `_DevBible\`, and `%LOCALAPPDATA%\Programs\` strictly read-only.
+Architecture specification for **`reCart`** (3-way alias `reCart` <-> `reCartOne` <-> `reNes`; workspace directory `Personal/reCartOne`; solution `Dev\reCart.slnx`). Built cleanly on **`Foundation v0.5.5`** and **`reEngine v0.6.2`** (`reEngine.Core`, `reEngine.Host.dll`). Keep `Foundation\`, `reEngine\`, `reStation\`, `_DevBible\`, and `%LOCALAPPDATA%\Programs\` strictly read-only. See [`CHARTER.md`](CHARTER.md) for conceptual boundaries.
 
 ---
 
@@ -47,7 +47,7 @@ flowchart LR
 ### 2.4 Upstream `reEngine` Prerequisite Lockstep (`v0.2.0` -> `v1.0.0`)
 | `reCart` Minor | Focus | Required `reEngine` Track | Dual-Installer / Settings Alignment |
 | :--- | :--- | :--- | :--- |
-| **`v0.1.x`** | Live AOT Core Baseline (`v0.1.3` async AOT overlay, `JumpTables`, `.7z`, `MediaGateHandlers`, `HostSettingsStore`) | `v0.5.0`–`v0.6.2` | `7`-file `Auto`, `SettingsDataDirectory`, `HostProtocolVersion = "0.6.2"` |
+| **`v0.1.x`** | Live AOT Core Baseline (`v0.1.4`: `ValidateD5Core` `isVerified`, `PlayerCliOptionHelpers` superset, `Launcher` detach + `KILL_ON_JOB_CLOSE`, `0/8/16` live `OverscanCrop`, silent-idle demo audio, Core/Player hot-path optimizations) | `v0.5.0`–`v0.6.2` | `7`-file `Auto`, `SettingsDataDirectory`, `HostProtocolVersion = "0.6.2"` |
 | **`v0.2.0`** | Cooperative Scheduler, `Shared IR`, RyuJIT / Zero-RWX, `RCARTQS2` | `v0.5.0+` (`v0.6.0` opt-in) | Domain `booting.sentinel` / Standard 18 keys; binds `v0.6.0` UI toggles |
 | **`v0.3.0`** | Blip-Buffer DSP, `PAL`/`Dendy`, `R06` Audio Rail, VRR | **`v0.6.0`** | Host `settings.audio.json`, host biquad LP/HP, Sound Test `ExtraRows` |
 | **`v0.4.0`** | Two-Phase `ParallelCpu` PPU + GPU Compositor + `R05` Enhancements | **`v0.6.0`** | Multi-backend `TryReadSurfaceRect`, `settings.video.json`, `F12` capture; `7`-file `Auto` |
@@ -65,13 +65,13 @@ Keep **`Dev\reCart.slnx` strictly at 8 assemblies** (avoiding extra cold-AOT com
 | Project (`Dev\`) | Output Type | Live (`v0.1.0`) + Scheduled (`v0.2.0–v0.7.0`) Structure |
 | :--- | :--- | :--- |
 | `src\reCart.Contracts` | Class Library (`net8.0`) | Live `Cart*` ABI + additive `CartExecutionContracts` (`v0.2.0`), `CartAudioContracts` (`v0.3.0`), `PpuScanlineStateSnapshot` / `ISubTickFrameHook` / `ICartGameFramePatch` (`v0.4.0`), `ICartAssetCatalogProvider` / `ICartFdsVolumeProvider` (`v0.6.0`), `ICartResearchInspector` (`v0.7.0`) |
-| `src\reCart.Core` | Class Library (`net8.0`) | Live `Cpu\`, `Mappers\`, `Rom\`, `Ppu\` *(split `Ppu2C02Renderer.cs` `406` -> 4 files `< 250` SLOC in `v0.4.0`)*, `Apu\`, `Input\`, `Runtime\` (`CartMachineHost` cycle-paced `StepCpuAndApuCycle`/`_pendingAotNmi`/`_pendingAotIrq`), `Oracle\`; planned folders `Ir\`, `Jit\`, `Bringup\` (`v0.2.0`), `Apu\Expansion\` (`v0.3.0`/`v0.6.0`), `Gpu\` (`v0.4.0`), `Saves\` (`v0.5.0`), `Fds\` (`v0.6.0`), `Research\` (`v0.7.0`) |
+| `src\reCart.Core` | Class Library (`net8.0`) | Live `Cpu\`, `Mappers\` (power-of-two bitmask banking in `Mmc1Mapper`/`UxRomMapper`), `Rom\`, `Ppu\` (`PackedRgbaLut` in `Ppu2C02Palette`, `MemoryMarshal.Cast` packed rendering in `Ppu2C02Renderer`, cached `_timing` constants + mutually exclusive dot branches in `Ppu2C02Core`; split `Ppu2C02Renderer.cs` `-> 4` files `< 250` SLOC in `v0.4.0`), `Apu\` (cached region tables/thresholds in `Apu2A03Core`), `Input\`, `Runtime\` (`CartMachineHost` cycle-paced `StepCpuAndApuCycle` + `(Cpu.P & 0x04) == 0` IRQ short-circuit), `Oracle\`; planned folders `Ir\`, `Jit\`, `Bringup\` (`v0.2.0`), `Apu\Expansion\` (`v0.3.0`/`v0.6.0`), `Gpu\` (`v0.4.0`), `Saves\` (`v0.5.0`), `Fds\` (`v0.6.0`), `Research\` (`v0.7.0`) |
 | `src\reCart.Compiler` | Class Library (`net8.0`) | `Lifter6502ToCSharp`, `LifterJumpTableScanner` (`recipe.JumpTables`), `UnliftedPcTrapException`, `CleanRoomRecompPackager`, `ColdAotCacheCompiler`, `SyntheticCleanRoomCartBuilder`; converges on `reCart.Core\Ir\` (`v0.2.0`) + automated `R3` Promoter (`v0.7.0`) |
-| `src\reCart.Decomp` | Class Library (`net8.0`) | `CartDecompPlatformProvider` (`platformId: "nes"`), `SixTellDetector`, `D4BuildReportValidator` (v1 + v2 `d5_byte_match.json` keys), `CartCleanRoomValidator`, `CartMediaIntakeInspector` |
-| `src\reCart.Player` | WinExe (`net8.0-windows`) | `Program`, `PlayerCliOptions`, `PlayerF1DrawerBuilder`, `CartMediaArchiveLoader` (`Foundation.Retro.MediaContainerExtractor` + bundled `tools\7z.*` + external ROM staging), `ReCartSessionHost` (async `HostAotCompileOverlayView` + `HostSettingsStore` `SettingsDataDirectory` + `MediaGateHandlers` `.recomp` drop / `Select .recomp Module...` / standalone raw-ROM clean-room guidance + interactive `UnliftedPcTrapException` trap catch / `MediaAndInput` `<DataDir>\rom\` discovery / `VerifyAndPump`), `ReCartLockstepRunner`, Debug-only `PlayerAutomationBridge` |
-| `src\reCart.Launcher` | Single-File WinExe | `< 2 MB` `reCart.exe`, CWD path normalization, `--autostart*` stripping (`AllowAutoStart = false`) |
+| `src\reCart.Decomp` | Class Library (`net8.0`) | `CartDecompPlatformProvider` (`platformId: "nes"`), `SixTellDetector`, `D4BuildReportValidator` (v1 + v2 `"isVerified"`/`"romMatched"` `d5_byte_match.json` keys), `CartCleanRoomValidator`, `CartMediaIntakeInspector` |
+| `src\reCart.Player` | WinExe (`net8.0-windows`) | `Program`, `PlayerCliOptions`, `PlayerCliOptionHelpers` (CLI superset), `PlayerF1DrawerBuilder` (deduplicated `F1` rows), `CartMediaArchiveLoader` (`Foundation.Retro.MediaContainerExtractor` + bundled `tools\7z.*` + external ROM staging), `ReCartSessionHost` (async `HostAotCompileOverlayView`, `HostSettingsStore` `SettingsDataDirectory`, `0/8/16` live `OverscanCrop` `UpdateDrawerDescriptor`, silent-idle `SynthesizeDemoAudio`, `stackalloc` `Span<uint>` ports + `MemoryMarshal.Cast` writes, cached `SDL3.dll` exports in `VerifyAndPump`, `MediaGateHandlers` `reCart v0.1.4` visibility + zero empty catches), `ReCartLockstepRunner`, Debug-only `PlayerAutomationBridge` |
+| `src\reCart.Launcher` | Single-File WinExe | `< 2 MB` `reCart.exe`, `LauncherArgsHelper` (interactive GUI detach, CWD path normalization, `--autostart*` stripping `AllowAutoStart = false`), Win32 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` wait guard |
 | `src\reCart.Installer` | WinExe (`net8.0-windows`) | `Program`, `InstallerCliAndAutomation`, `ReCartSuitePlacementHelper` (`app\tools\{7z.exe,7z.dll,LICENSE-7ZIP.txt}`, `7`-file `Auto` through `v0.4.0` -> `8`-file `Online`+`Offline` Dual-Installer in `v0.5.0`) |
-| `tests\reCart.Tests` | xUnit (`net8.0-windows`) | `10` modular test classes (`94/94` isolated `v0.1.3` test cases incl. `PlayerV013PrelaunchTests`) + per-minor backend parity suites (`0` warnings) |
+| `tests\reCart.Tests` | xUnit (`net8.0-windows`) | `10` modular test classes (`125/125` isolated `v0.1.4` test cases) + per-minor backend parity suites (`0` warnings) |
 
 ---
 

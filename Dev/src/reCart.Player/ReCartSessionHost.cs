@@ -30,6 +30,7 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
     private string? _pendingExternalRomPath;
     private string _saveDir;
     private string _moduleId = CartEngineConstants.AppId;
+    private string _backendId = CartRenderBackendIds.OpenGl;
     private ushort _mapperId;
     private byte _submapperId;
     private CartVideoRegionStandard _activeRegion = CartVideoRegionStandard.Ntsc;
@@ -46,11 +47,15 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
     private int _demoX = 120;
     private int _demoY = 112;
     private double _audioPhase;
+    private bool _demoInputActive;
+    private bool _wasDemoInputActive;
+    private int _demoChimeSamplesRemaining;
 
     public int QuickSaveCount { get; private set; }
     public int QuickLoadCount { get; private set; }
     public string? LastQuickSavePath { get; private set; }
     public string LastStatusMessage { get; private set; } = "Initialized";
+    internal HostOverscanCrop CurrentOverscanCrop => _overscanCrop;
 
     public ReCartSessionHost(
         PlayerCliOptions options,
@@ -61,9 +66,11 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
         _runtimeFactory = runtimeFactory;
         _compilerPipeline = compilerPipeline;
         _saveDir = options.SaveDirectory;
+        _backendId = options.BackendId;
         _aspectRatioMode = options.AspectRatioMode;
         _overscanCrop = options.OverscanCrop;
         _isFullscreen = options.Fullscreen;
+        _isFastForward = options.IsFastForwardEnabled;
         _executionTier = options.ExecutionTier;
         _demoCartActivated = options.DemoCart;
         _logSink = new CappedSharedLogSink(Path.Combine(options.Environment.LogDirectory, $"{CartEngineConstants.AppId}.player.log"));
@@ -79,7 +86,7 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
         _submapperId = loaded.RomHeader?.SubmapperId ?? loaded.Manifest?.SubmapperId ?? 0;
         _activeRegion = ResolveEffectiveRegion(_options, loaded);
         _executionTier = ResolveEffectiveExecutionTier(_options, loaded);
-        string backendId = _options.HasExplicitBackend ? _options.BackendId : (loaded.Manifest?.BackendId ?? _options.BackendId);
+        _backendId = _options.HasExplicitBackend ? _options.BackendId : (loaded.Manifest?.BackendId ?? _options.BackendId);
         _aspectRatioMode = _options.HasExplicitAspectMode ? _options.AspectRatioMode
             : (!string.IsNullOrWhiteSpace(loaded.Manifest?.AspectRatioMode) ? HostAspectRatioModeCodec.Parse(loaded.Manifest.AspectRatioMode) : _options.AspectRatioMode);
 
@@ -98,7 +105,7 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
             loaded = new LoadedCartSessionInput(
                 null, null, null, null, null, null,
                 CartEngineConstants.AppId,
-                $"{CartEngineConstants.DisplayName} Session",
+                $"{CartEngineConstants.DisplayName} v{CartEngineConstants.Version}",
                 "Select .recomp Module + Verified ROM",
                 loaded.PreloadRomDirectory);
             _loaded = loaded;
@@ -117,16 +124,13 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
                 await ActivateLoadedRomAsync(loaded, null, ct).ConfigureAwait(false);
             }
 
-            HostDrawerDescriptor descriptor = PlayerF1DrawerBuilder.Build(
-                loaded.ModuleTitle, loaded.MediaLabel, backendId, _options.ResolutionScale,
-                _mapperId, _submapperId, timing, _executionTier, _overscanCrop, _isFastForward,
-                _controllerDpadMode, _isFourScoreEnabled, FormatTurboRate(_turboFramesInterval));
+            HostDrawerDescriptor descriptor = BuildCurrentDrawerDescriptor(timing);
 
             _runner = new HostSessionRunner(1280, 720, descriptor);
             HostAotCompileState? initialAotState = interactive && hasInitialRom && _compilerPipeline is not null && _executionTier != CartExecutionTierMode.InterpreterOracle
                 ? new HostAotCompileState(true, "Preparing Native Module...", 0.08, $"Starting AOT cache for '{loaded.ModuleTitle}'...")
                 : null;
-            var hostOpts = BuildHostSessionOptions(loaded, timing, descriptor, backendId, initialLoadError, initialAotState);
+            var hostOpts = BuildHostSessionOptions(loaded, timing, descriptor, _backendId, initialLoadError, initialAotState);
 
             if (interactive && hasInitialRom)
             {
@@ -153,7 +157,8 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
 
     public ValueTask OnFrameTickAsync(long frameNumber, HostInputFrame input, Span<byte> rgbaFramebuffer, int width, int height, CancellationToken ct)
     {
-        uint[] ports = MapHostInputToNesPorts(input, frameNumber);
+        Span<uint> ports = stackalloc uint[4];
+        FillNesPorts(input, frameNumber, ports);
         bool fastForward = _isFastForward || input.IsFastForwardHeld;
         if (input.IsCutsceneSkipPressed || _cutsceneSkipPending)
         {
@@ -184,10 +189,25 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
             }
             else if (_demoCartActivated)
             {
+                bool inputActive = ports[0] != 0;
+                _demoInputActive = inputActive;
+                if (inputActive)
+                {
+                    if (!_wasDemoInputActive) _demoChimeSamplesRemaining = 4410;
+                    _wasDemoInputActive = true;
+                }
+                else
+                {
+                    _wasDemoInputActive = false;
+                    _demoChimeSamplesRemaining = 0;
+                }
                 RenderDemoFrame(ports[0], fastForward, rgbaFramebuffer, width, height);
             }
             else
             {
+                _demoInputActive = false;
+                _wasDemoInputActive = false;
+                _demoChimeSamplesRemaining = 0;
                 RenderIdleBackdropFrame(rgbaFramebuffer, width, height);
             }
         }
@@ -200,16 +220,16 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
         lock (_runtimeSync)
         {
             if (_runtime is not null) return _runtime.Apu.ReadSamples(interleavedStereoPcm);
+            if (_demoCartActivated) return SynthesizeDemoAudio(interleavedStereoPcm);
         }
-        if (_demoCartActivated) return SynthesizeDemoAudio(interleavedStereoPcm);
         interleavedStereoPcm.Clear();
         return 0;
     }
 
     public void OnAspectRatioChanged(HostAspectRatioMode mode) { _aspectRatioMode = mode; Log("INFO", $"Aspect mode -> {mode}"); }
-    public void OnOverscanCropChanged(HostOverscanCrop crop) { _overscanCrop = crop; Log("INFO", $"Overscan -> {PlayerF1DrawerBuilder.FormatOverscan(crop)}"); }
+    public void OnOverscanCropChanged(HostOverscanCrop crop) { _overscanCrop = crop; RefreshDrawerDescriptor(); Log("INFO", $"Overscan -> {PlayerF1DrawerBuilder.FormatOverscan(crop)}"); }
     public void OnFullscreenChanged(bool isFullscreen) { _isFullscreen = isFullscreen; Log("INFO", $"Fullscreen -> {isFullscreen}"); }
-    public void OnFastForwardChanged(bool isEnabled) { _isFastForward = isEnabled; Log("INFO", $"FastForward -> {isEnabled}"); }
+    public void OnFastForwardChanged(bool isEnabled) { _isFastForward = isEnabled; RefreshDrawerDescriptor(); Log("INFO", $"FastForward -> {isEnabled}"); }
     public void OnCutsceneSkipRequested() { _cutsceneSkipPending = true; Log("INFO", "Cutscene skip requested."); }
 
     public void OnQuickSaveRequested()
@@ -266,11 +286,17 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
                 CartVideoRegionStandard.Pal => CartVideoRegionStandard.Dendy,
                 _ => CartVideoRegionStandard.Ntsc
             };
+            RefreshDrawerDescriptor();
             Log("INFO", $"ExtraRow Region cycled -> {_activeRegion}");
         }
         else if (string.Equals(rowId, "OverscanCrop", StringComparison.OrdinalIgnoreCase))
         {
-            _overscanCrop = _overscanCrop.Top == 0 ? new HostOverscanCrop(8, 8, 8, 8) : HostOverscanCrop.None;
+            _overscanCrop = isSecondaryAction
+                ? HostOverscanCrop.None
+                : (_overscanCrop.Top <= 0
+                    ? new HostOverscanCrop(8, 8, 8, 8)
+                    : (_overscanCrop.Top < 16 ? new HostOverscanCrop(16, 16, 16, 16) : HostOverscanCrop.None));
+            RefreshDrawerDescriptor();
             Log("INFO", $"ExtraRow Overscan -> {PlayerF1DrawerBuilder.FormatOverscan(_overscanCrop)}");
         }
         else if (string.Equals(rowId, "FastForward", StringComparison.OrdinalIgnoreCase))
@@ -298,8 +324,28 @@ internal sealed partial class ReCartSessionHost : IHostSessionCallbacks, IHostSe
         }
         else if (string.Equals(optionId, "turboRate", StringComparison.OrdinalIgnoreCase))
             _turboFramesInterval = selectedChoice switch { "15 Hz" => 2, "30 Hz" => 1, _ => 0 };
+        RefreshDrawerDescriptor();
         Log("INFO", $"ControlOption '{optionId}' -> '{selectedChoice}'");
     }
+
+    private HostDrawerDescriptor BuildCurrentDrawerDescriptor(CartRegionTimingProfile? timing = null) =>
+        PlayerF1DrawerBuilder.Build(
+            _loaded?.ModuleTitle ?? $"{CartEngineConstants.DisplayName} v{CartEngineConstants.Version}",
+            _loaded?.MediaLabel ?? "BYO .nes / .fds (data\\rom\\)",
+            _backendId,
+            _options.ResolutionScale,
+            _mapperId,
+            _submapperId,
+            timing ?? CartRegionTimingProfile.ForRegion(_activeRegion),
+            _executionTier,
+            _overscanCrop,
+            _isFastForward,
+            _controllerDpadMode,
+            _isFourScoreEnabled,
+            FormatTurboRate(_turboFramesInterval));
+
+    private void RefreshDrawerDescriptor() =>
+        _runner?.UpdateDrawerDescriptor(BuildCurrentDrawerDescriptor());
 
     private string ResolveQuickSavePath() =>
         AppEnvironment.AssertPathContained(Path.Combine(_saveDir, $"{_moduleId}.slot0.savstate"), _saveDir);

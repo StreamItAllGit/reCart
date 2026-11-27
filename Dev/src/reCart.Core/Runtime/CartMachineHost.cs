@@ -286,7 +286,7 @@ public sealed class CartMachineHost : ICartMachineRuntime, IReCartHost, ICartQui
             }
         }
 
-        if ((Apu.IsIrqPending || Mapper.IsIrqPending) && (Cpu.P & 0x04) == 0)
+        if ((Cpu.P & 0x04) == 0 && (Apu.IsIrqPending || Mapper.IsIrqPending))
         {
             Cpu.RequestIrq();
             if (!isOracle && _staticModule != null)

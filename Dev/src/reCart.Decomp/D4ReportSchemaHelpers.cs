@@ -172,9 +172,9 @@ internal static partial class D4ReportSchemaHelpers
             violations.Add($"d5_byte_match.json matchedBinaries={matchedBinaries} (expected > 0).");
         }
 
-        if (TryGetBool(root, out bool romMatched, "romMatched") && !romMatched)
+        if (TryGetBool(root, out bool romMatched, "isVerified", "romMatched") && !romMatched)
         {
-            violations.Add("d5_byte_match.json reported romMatched=false.");
+            violations.Add("d5_byte_match.json reported isVerified/romMatched=false.");
         }
 
         bool hasRomSize = TryGetLong(root, out long romBytes, "romBytes", "fileSizeBytes");

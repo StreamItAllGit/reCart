@@ -80,6 +80,11 @@ internal static class Program
                 return ReCartSessionHost.VerifyTarget(options, Console.Out, Console.Error);
             }
 
+            if (options.Doctor)
+            {
+                return ReCartSessionHost.RunDoctor(options, Console.Out, Console.Error);
+            }
+
             if (options.Environment.DryRun)
             {
                 Console.WriteLine($"[DRY-RUN] {CartEngineConstants.DisplayName} v{CartEngineConstants.Version} backend={options.BackendId} aspect={options.AspectRatioMode} dataDir='{options.Environment.DataDirectory}'.");

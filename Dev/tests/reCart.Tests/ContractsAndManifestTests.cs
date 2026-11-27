@@ -127,4 +127,47 @@ public sealed class ContractsAndManifestTests
         Assert.Equal(Path.GetFullPath(@"D:\FakeWorkspace\pkg\demo.recomp"), rebased[1]);
         Assert.Equal("squareInteger", rebased[3]);
     }
+
+    [Theory]
+    [InlineData(new string[0], false)]
+    [InlineData(new[] { "--open", "pkg\\demo.recomp" }, false)]
+    [InlineData(new[] { "game.nes" }, false)]
+    [InlineData(new[] { "pkg\\demo.recomp" }, false)]
+    [InlineData(new[] { "--disc", "game.nes", "--fps-mode", "original", "--target-fps", "60", "--vsync", "--fast-forward", "--open-settings", "--show-fps", "--enable-logs", "--force-zero-rwx", "--profile", "p1" }, false)]
+    [InlineData(new[] { "--open", "pkg\\demo.recomp", "--wait" }, true)]
+    [InlineData(new[] { "game.nes", "--verify" }, true)]
+    [InlineData(new[] { "--verify-module", "demo" }, true)]
+    [InlineData(new[] { "--doctor" }, true)]
+    [InlineData(new[] { "--frames", "5", "demo.recomp" }, true)]
+    [InlineData(new[] { "--dump-screenshot", "out.png" }, true)]
+    [InlineData(new[] { "--dump-audio", "out.wav" }, true)]
+    [InlineData(new[] { "--headless" }, true)]
+    [InlineData(new[] { "--tray-only" }, true)]
+    [InlineData(new[] { "--automation-port", "5100" }, true)]
+    [InlineData(new[] { "--dry-run" }, true)]
+    [InlineData(new[] { "--json" }, true)]
+    [InlineData(new[] { "--check-updates" }, true)]
+    [InlineData(new[] { "--register-assoc" }, true)]
+    [InlineData(new[] { "--jit-bringup" }, true)]
+    [InlineData(new[] { "--require-backend", "vulkan" }, true)]
+    [InlineData(new[] { "--help" }, true)]
+    [InlineData(new[] { "-h" }, true)]
+    [InlineData(new[] { "/?" }, true)]
+    [InlineData(new[] { "help" }, true)]
+    [InlineData(new[] { "--version" }, true)]
+    [InlineData(new[] { "-v" }, true)]
+    public void LauncherArgsHelper_DetachesInteractiveGuiAndWaitsOnSyncFlags(string[] args, bool expectedWait)
+    {
+        Assert.Equal(expectedWait, LauncherArgsHelper.ShouldWaitForChild(args));
+    }
+
+    [Fact]
+    public void LauncherArgsHelper_PreservesOptionalRequireBackendTokenDuringPathNormalization()
+    {
+        string[] rebased = LauncherArgsHelper.NormalizePathArguments(
+            ["--require-backend", "vulkan", "--disc", "roms\\cart.nes"],
+            @"D:\FakeWorkspace");
+        Assert.Equal("vulkan", rebased[1]);
+        Assert.Equal(Path.GetFullPath(@"D:\FakeWorkspace\roms\cart.nes"), rebased[3]);
+    }
 }

@@ -19,6 +19,9 @@ public sealed class Mmc1Mapper : CartMapperBase
 
     private readonly int _prgBankCount16K;
     private readonly int _chrBankCount4K;
+    private readonly int _prgByteMask;
+    private readonly int _chrByteMask;
+    private readonly int _prgRamByteMask;
     private Func<ulong>? _cycleProvider;
 
     private byte _shiftRegister;
@@ -40,6 +43,9 @@ public sealed class Mmc1Mapper : CartMapperBase
     {
         _prgBankCount16K = Math.Max(1, PrgRom.Length / 16384);
         _chrBankCount4K = Math.Max(1, ChrMemory.Length / 4096);
+        _prgByteMask = ComputePow2Mask(PrgRom.Length);
+        _chrByteMask = ComputePow2Mask(ChrMemory.Length);
+        _prgRamByteMask = ComputePow2Mask(PrgRam.Length);
         _cycleProvider = cpuCycleProvider;
         Reset();
     }
@@ -57,12 +63,14 @@ public sealed class Mmc1Mapper : CartMapperBase
     {
         if (address >= 0xC000)
         {
-            return PrgRom[(_prgSlot1 * 16384 + (address & 0x3FFF)) % PrgRom.Length];
+            int offset = (_prgSlot1 << 14) | (address & 0x3FFF);
+            return PrgRom[_prgByteMask >= 0 ? offset & _prgByteMask : offset % PrgRom.Length];
         }
 
         if (address >= 0x8000)
         {
-            return PrgRom[(_prgSlot0 * 16384 + (address & 0x3FFF)) % PrgRom.Length];
+            int offset = (_prgSlot0 << 14) | (address & 0x3FFF);
+            return PrgRom[_prgByteMask >= 0 ? offset & _prgByteMask : offset % PrgRom.Length];
         }
 
         if (address >= 0x6000)
@@ -118,7 +126,8 @@ public sealed class Mmc1Mapper : CartMapperBase
     public override byte PpuRead(ushort address)
     {
         int slot = (address & 0x1000) == 0 ? _chrSlot0 : _chrSlot1;
-        return ChrMemory[(slot * 4096 + (address & 0x0FFF)) % ChrMemory.Length];
+        int offset = (slot << 12) | (address & 0x0FFF);
+        return ChrMemory[_chrByteMask >= 0 ? offset & _chrByteMask : offset % ChrMemory.Length];
     }
 
     /// <inheritdoc />
@@ -130,7 +139,8 @@ public sealed class Mmc1Mapper : CartMapperBase
         }
 
         int slot = (address & 0x1000) == 0 ? _chrSlot0 : _chrSlot1;
-        ChrMemory[(slot * 4096 + (address & 0x0FFF)) % ChrMemory.Length] = value;
+        int offset = (slot << 12) | (address & 0x0FFF);
+        ChrMemory[_chrByteMask >= 0 ? offset & _chrByteMask : offset % ChrMemory.Length] = value;
     }
 
     /// <inheritdoc />
@@ -277,8 +287,12 @@ public sealed class Mmc1Mapper : CartMapperBase
         int bank8K = PrgRam.Length >= 32768
             ? (_chrBank0 >> 2) & 0x03
             : (PrgRam.Length >= 16384 ? (_chrBank0 >> 3) & 0x01 : 0);
-        return (bank8K * 8192 + (address - 0x6000)) % PrgRam.Length;
+        int offset = (bank8K << 13) | (address - 0x6000);
+        return _prgRamByteMask >= 0 ? offset & _prgRamByteMask : offset % PrgRam.Length;
     }
+
+    private static int ComputePow2Mask(int length) =>
+        length > 0 && (length & (length - 1)) == 0 ? length - 1 : -1;
 
     private static byte ToControlMirroringBits(CartMirroringMode mode) => mode switch
     {

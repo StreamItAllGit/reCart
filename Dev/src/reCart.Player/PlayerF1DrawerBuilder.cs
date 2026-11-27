@@ -38,9 +38,7 @@ internal static class PlayerF1DrawerBuilder
             new("Mapper", HostDrawerTabId.System, "Mapper", mapperText, "Active iNES / NES 2.0 cartridge board", IsInteractive: false),
             new("Region", HostDrawerTabId.System, "Region", $"{timingProfile.Name} ({timingProfile.FrameRateHz:F2} Hz)", "Active RP2C02/RP2C07 region timing profile", IsInteractive: true),
             new("ExecutionTier", HostDrawerTabId.System, "Execution Tier", tierLabel, "Standard 24 AOT-primary execution tier", IsInteractive: false),
-            new("OverscanCrop", HostDrawerTabId.Video, "Overscan Crop", overscanText, "Cycle NES overscan edge crop", IsInteractive: true),
-            new("FastForward", HostDrawerTabId.Video, "Fast-Forward", isFastForwardEnabled ? "On (2x)" : "Off", "Toggle F6 / Grave fast-forward cadence", IsInteractive: true),
-            new("CutsceneSkip", HostDrawerTabId.System, "Cutscene Skip", "Ready (F7)", "Request F7 cutscene fast-skip burst", IsInteractive: true)
+            new("OverscanCrop", HostDrawerTabId.Video, "Overscan Crop", overscanText, "Cycle NES overscan edge crop", IsInteractive: true)
         ];
 
         IReadOnlyList<HostControlOptionDescriptor> controlOptions =

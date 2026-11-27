@@ -23,6 +23,8 @@ internal static class Ppu2C02Palette
         0xCCD278u, 0xB4DE78u, 0xA8E290u, 0x98E2B4u, 0xA0D6E4u, 0xA0A2A0u, 0x000000u, 0x000000u
     ];
 
+    private static readonly uint[] PackedRgbaLut = BuildPackedRgbaLut();
+
     /// <summary>Resolves a mirrored <c>$3F00-$3FFF</c> palette RAM index (<c>0..31</c>).</summary>
     public static int ResolvePaletteIndex(ushort address)
     {
@@ -35,31 +37,55 @@ internal static class Ppu2C02Palette
         return index;
     }
 
+    /// <summary>Looks up a pre-packed RGBA8888 pixel (<c>uint</c>) applying greyscale and emphasis bits.</summary>
+    public static uint LookupPackedRgba(byte colorIndex, byte ppuMask, bool swapRedGreenEmphasis)
+    {
+        int masked = (ppuMask & 0x01) != 0 ? (colorIndex & 0x30) : (colorIndex & 0x3F);
+        int swapBit = swapRedGreenEmphasis ? 512 : 0;
+        int emphasisBits = (ppuMask & 0xE0) << 1;
+        return PackedRgbaLut[swapBit | emphasisBits | masked];
+    }
+
     /// <summary>Writes a single RGBA8888 pixel into <paramref name="frameBuffer"/> applying greyscale and emphasis bits.</summary>
     public static void WriteRgbaPixel(Span<byte> frameBuffer, int byteOffset, byte colorIndex, byte ppuMask, bool swapRedGreenEmphasis)
     {
-        int masked = (ppuMask & 0x01) != 0 ? (colorIndex & 0x30) : (colorIndex & 0x3F);
-        uint rgb = MasterRgb[masked];
+        uint packed = LookupPackedRgba(colorIndex, ppuMask, swapRedGreenEmphasis);
+        System.Runtime.InteropServices.MemoryMarshal.Write(frameBuffer.Slice(byteOffset, 4), in packed);
+    }
 
-        int r = (int)((rgb >> 16) & 0xFF);
-        int g = (int)((rgb >> 8) & 0xFF);
-        int b = (int)(rgb & 0xFF);
-
-        byte emphasis = (byte)(ppuMask >> 5);
-        if (emphasis != 0)
+    private static uint[] BuildPackedRgbaLut()
+    {
+        var lut = new uint[1024];
+        for (int swap = 0; swap < 2; swap++)
         {
-            bool empR = swapRedGreenEmphasis ? (emphasis & 0x02) != 0 : (emphasis & 0x01) != 0;
-            bool empG = swapRedGreenEmphasis ? (emphasis & 0x01) != 0 : (emphasis & 0x02) != 0;
-            bool empB = (emphasis & 0x04) != 0;
+            bool swapRg = swap != 0;
+            for (int emphasis = 0; emphasis < 8; emphasis++)
+            {
+                bool empR = swapRg ? (emphasis & 0x02) != 0 : (emphasis & 0x01) != 0;
+                bool empG = swapRg ? (emphasis & 0x01) != 0 : (emphasis & 0x02) != 0;
+                bool empB = (emphasis & 0x04) != 0;
 
-            if (!empR) r = (r * 191) >> 8;
-            if (!empG) g = (g * 191) >> 8;
-            if (!empB) b = (b * 191) >> 8;
+                for (int colorIdx = 0; colorIdx < 64; colorIdx++)
+                {
+                    uint rgb = MasterRgb[colorIdx];
+                    int r = (int)((rgb >> 16) & 0xFF);
+                    int g = (int)((rgb >> 8) & 0xFF);
+                    int b = (int)(rgb & 0xFF);
+
+                    if (emphasis != 0)
+                    {
+                        if (!empR) r = (r * 191) >> 8;
+                        if (!empG) g = (g * 191) >> 8;
+                        if (!empB) b = (b * 191) >> 8;
+                    }
+
+                    lut[(swap << 9) | (emphasis << 6) | colorIdx] = BitConverter.IsLittleEndian
+                        ? ((uint)r | ((uint)g << 8) | ((uint)b << 16) | 0xFF000000u)
+                        : (((uint)r << 24) | ((uint)g << 16) | ((uint)b << 8) | 0xFFu);
+                }
+            }
         }
 
-        frameBuffer[byteOffset] = (byte)r;
-        frameBuffer[byteOffset + 1] = (byte)g;
-        frameBuffer[byteOffset + 2] = (byte)b;
-        frameBuffer[byteOffset + 3] = 0xFF;
+        return lut;
     }
 }

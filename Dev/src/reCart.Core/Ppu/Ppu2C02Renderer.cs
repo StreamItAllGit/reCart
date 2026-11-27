@@ -1,8 +1,9 @@
 // @module: reCart.Core.Ppu.Ppu2C02Renderer
 // @purpose: Dot-stepped RP2C02 background/sprite shift registers, OAM evaluation, priority mux, and VRAM/CIRAM bus.
-// @depends-on: System, System.IO, reCart.Contracts
+// @depends-on: System, System.IO, System.Runtime.InteropServices, reCart.Contracts
 // @exports: Ppu2C02Renderer
 
+using System.Runtime.InteropServices;
 using reCart.Contracts;
 
 namespace reCart.Core.Ppu;
@@ -264,8 +265,9 @@ internal sealed class Ppu2C02Renderer
 
         byte colorAddr = ResolveMuxPaletteAddress(x, bgPixel, bgPal, sprPixel, sprPal, sprBehindBg, isSpr0);
         byte colorIdx = ReadPaletteRam((ushort)(0x3F00 | colorAddr));
-        int dstOffset = ((scanline * CartEngineConstants.FrameWidth) + x) * 4;
-        Ppu2C02Palette.WriteRgbaPixel(FrameBuffer, dstOffset, colorIdx, _regs.Mask, _swapRedGreenEmphasis);
+        Span<uint> pixels = MemoryMarshal.Cast<byte, uint>(FrameBuffer.AsSpan());
+        pixels[(scanline * CartEngineConstants.FrameWidth) + x] =
+            Ppu2C02Palette.LookupPackedRgba(colorIdx, _regs.Mask, _swapRedGreenEmphasis);
     }
 
     private byte ResolveMuxPaletteAddress(int x, byte bgPixel, byte bgPal, byte sprPixel, byte sprPal, bool sprBehindBg, bool isSpr0)

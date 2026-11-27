@@ -61,10 +61,120 @@ public sealed class PlayerQuickSaveAndInputTests
 
         Assert.NotNull(desc.ExtraRows);
         Assert.NotNull(desc.ControlOptions);
+        Assert.Equal(4, desc.ExtraRows.Count);
         Assert.Contains(desc.ExtraRows, r => r.RowId == "Mapper" && r.Value.Contains("2.1"));
+        Assert.Contains(desc.ExtraRows, r => r.RowId == "Region");
         Assert.Contains(desc.ExtraRows, r => r.RowId == "ExecutionTier" && r.Value.Contains("AOT"));
+        Assert.Contains(desc.ExtraRows, r => r.RowId == "OverscanCrop");
+        Assert.DoesNotContain(desc.ExtraRows, r => r.RowId is "FastForward" or "CutsceneSkip");
         Assert.Equal(3, desc.ControlOptions.Count);
         Assert.Contains(desc.ControlOptions, c => c.OptionId == "fourScore" && c.SelectedChoice == "On");
+    }
+
+    [Fact]
+    public void PlayerCliOptions_ParsesParityFlagsAndWiresHostSessionOptions()
+    {
+        string temp = TestPaths.CreateTempDir("recart_parity_cli");
+        try
+        {
+            string romPath = Path.Combine(temp, "cart.nes");
+            File.WriteAllBytes(romPath, SyntheticCleanRoomCartBuilder.BuildPackage().RomBytes);
+
+            PlayerCliOptions opts = PlayerCliOptions.Parse(
+            [
+                "--disc", romPath, "--tray-only", "--fps-mode", "original", "--target-fps", "120",
+                "--vsync", "--fast-forward", "--open-settings", "--show-fps", "--enable-logs",
+                "--doctor", "--force-zero-rwx", "--jit-bringup", "--profile", "speedrun",
+                "--require-backend", "software",
+                "--data-dir", Path.Combine(temp, "data"), "--log-dir", Path.Combine(temp, "logs")
+            ]);
+
+            Assert.Equal(Path.GetFullPath(romPath), opts.RomPath);
+            Assert.True(opts.TrayOnly);
+            Assert.Equal(HostFrameRateMode.Original, opts.FrameRateMode);
+            Assert.Equal(120, opts.TargetFps);
+            Assert.True(opts.IsVsyncEnabled);
+            Assert.True(opts.IsFastForwardEnabled);
+            Assert.True(opts.OpenSettingsInitially);
+            Assert.True(opts.ShowFpsInitially);
+            Assert.True(opts.ShouldEnableRuntimeLogs);
+            Assert.True(opts.Doctor);
+            Assert.True(opts.ForceZeroRwx);
+            Assert.Equal(CartExecutionTierMode.StaticAotOnly, opts.ExecutionTier);
+            Assert.Equal("speedrun", opts.Profile);
+            Assert.True(opts.RequireBackend);
+            Assert.Equal(CartRenderBackendIds.Software, opts.BackendId);
+
+            PlayerCliOptions noVsync = PlayerCliOptions.Parse(
+                ["--no-vsync", "--require-backend=opengl", "--data-dir", Path.Combine(temp, "data"), "--log-dir", Path.Combine(temp, "logs")]);
+            Assert.False(noVsync.IsVsyncEnabled);
+            Assert.True(noVsync.RequireBackend);
+            Assert.Equal(CartRenderBackendIds.OpenGl, noVsync.BackendId);
+
+            var session = new ReCartSessionHost(opts);
+            HostDrawerDescriptor desc = PlayerF1DrawerBuilder.Build("Test", "cart.nes", opts.BackendId, opts.ResolutionScale, 0, 0, CartRegionTimingProfile.Ntsc, opts.ExecutionTier, opts.OverscanCrop, opts.IsFastForwardEnabled);
+            var loaded = new ReCartSessionHost.LoadedCartSessionInput(null, null, romPath, null, null, null, "test", "Test", "cart.nes", Path.Combine(temp, "data", "rom"));
+            HostSessionOptions hostOpts = session.BuildHostSessionOptions(loaded, CartRegionTimingProfile.Ntsc, desc, opts.BackendId);
+
+            Assert.False(hostOpts.RequireVisibleWindow);
+            Assert.Equal(HostFrameRateMode.Original, hostOpts.FrameRateMode);
+            Assert.Equal(120.0, hostOpts.TargetFps);
+            Assert.True(hostOpts.IsVsyncEnabled);
+            Assert.True(hostOpts.IsFastForwardEnabled);
+            Assert.True(hostOpts.OpenSettingsInitially);
+            Assert.True(hostOpts.ShowFpsInitially);
+            Assert.True(hostOpts.ShouldEnableRuntimeLogs);
+        }
+        finally { Directory.Delete(temp, recursive: true); }
+    }
+
+    [Fact]
+    public async Task ReCartSessionHost_OverscanCycleDemoAudioSilenceAndDoctorWork()
+    {
+        string temp = TestPaths.CreateTempDir("recart_overscan_audio");
+        try
+        {
+            string[] dataArgs = ["--data-dir", Path.Combine(temp, "data"), "--log-dir", Path.Combine(temp, "logs"), "--save-dir", Path.Combine(temp, "saves")];
+            Assert.Equal(0, await Program.RunMainAsync(["--doctor", "--backend", "software", .. dataArgs]));
+
+            ReCartSessionHost.LoadedCartSessionInput defaultLoaded = ReCartSessionHost.LoadCartInputs(PlayerCliOptions.Parse(dataArgs));
+            Assert.Equal($"{CartEngineConstants.DisplayName} v{CartEngineConstants.Version}", defaultLoaded.ModuleTitle);
+
+            PlayerCliOptions opts = PlayerCliOptions.Parse(["--demo-cart", .. dataArgs]);
+            var host = new ReCartSessionHost(opts);
+
+            // Overscan ExtraRow cycles 0 -> 8 -> 16 -> 0 and resets to 0 on secondary action.
+            Assert.Equal(HostOverscanCrop.None, host.CurrentOverscanCrop);
+            host.OnExtraRowActivated("OverscanCrop", isSecondaryAction: false);
+            Assert.Equal(new HostOverscanCrop(8, 8, 8, 8), host.CurrentOverscanCrop);
+            host.OnExtraRowActivated("OverscanCrop", isSecondaryAction: false);
+            Assert.Equal(new HostOverscanCrop(16, 16, 16, 16), host.CurrentOverscanCrop);
+            host.OnExtraRowActivated("OverscanCrop", isSecondaryAction: false);
+            Assert.Equal(HostOverscanCrop.None, host.CurrentOverscanCrop);
+            host.OnExtraRowActivated("OverscanCrop", isSecondaryAction: false);
+            host.OnExtraRowActivated("OverscanCrop", isSecondaryAction: true);
+            Assert.Equal(HostOverscanCrop.None, host.CurrentOverscanCrop);
+
+            // Demo audio must be completely silent (maxAbs == 0) when idle and emit a brief soft chime only on input.
+            byte[] fb = new byte[CartEngineConstants.FrameWidth * CartEngineConstants.FrameHeight * 4];
+            short[] pcm = new short[1470];
+
+            await host.OnFrameTickAsync(0, new HostInputFrame(0L, HostGamepadButtons.None), fb, CartEngineConstants.FrameWidth, CartEngineConstants.FrameHeight, CancellationToken.None);
+            int idleSamples = host.ReadAudioSamples(pcm);
+            Assert.True(idleSamples > 0);
+            Assert.Equal(0, pcm.Take(idleSamples).Max(s => Math.Abs((int)s)));
+
+            await host.OnFrameTickAsync(1, new HostInputFrame(1L, HostGamepadButtons.South), fb, CartEngineConstants.FrameWidth, CartEngineConstants.FrameHeight, CancellationToken.None);
+            int activeSamples = host.ReadAudioSamples(pcm);
+            Assert.True(activeSamples > 0);
+            int activeMaxAbs = pcm.Take(activeSamples).Max(s => Math.Abs((int)s));
+            Assert.InRange(activeMaxAbs, 1, 1000);
+
+            await host.OnFrameTickAsync(2, new HostInputFrame(2L, HostGamepadButtons.None), fb, CartEngineConstants.FrameWidth, CartEngineConstants.FrameHeight, CancellationToken.None);
+            int postIdleSamples = host.ReadAudioSamples(pcm);
+            Assert.Equal(0, pcm.Take(postIdleSamples).Max(s => Math.Abs((int)s)));
+        }
+        finally { Directory.Delete(temp, recursive: true); }
     }
 
     [Theory]
@@ -95,6 +205,7 @@ public sealed class PlayerQuickSaveAndInputTests
             Assert.Equal(0, await Program.RunMainAsync(["--version", .. dataArgs]));
             Assert.Equal(0, await Program.RunMainAsync(["--help", .. dataArgs]));
             Assert.Equal(0, await Program.RunMainAsync(["--dry-run", .. dataArgs]));
+            Assert.Equal(0, await Program.RunMainAsync(["--doctor", "--backend", "software", .. dataArgs]));
             Assert.Equal(6, await Program.RunMainAsync(["--verify", "--backend", "metal", "--require-backend", .. dataArgs]));
 
 #if !RECART_ENABLE_AUTOMATION

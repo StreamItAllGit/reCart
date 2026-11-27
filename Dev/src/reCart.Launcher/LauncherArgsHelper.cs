@@ -16,27 +16,33 @@ internal static class LauncherArgsHelper
 {
     internal static readonly HashSet<string> ValueOptions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "--open", "--module", "--rom", "--preload-media", "--media-path", "--verify-module",
+        "--open", "--module", "--rom", "--disc", "--preload-media", "--media-path", "--verify-module",
         "--reengine-dir", "--suite-dir", "--data-dir", "--config", "--log-dir", "--save-dir", "--feed",
         "--port", "--ui", "--backend", "--aspect-mode", "--scale", "--region", "--execution-tier",
-        "--audio-driver", "--frames", "--overscan", "--profile", "--suite-tab",
+        "--audio-driver", "--frames", "--overscan", "--fps-mode", "--target-fps", "--profile", "--suite-tab",
         "--automation-port", "--automation-token", "--fixture", "--dump-screenshot", "--dump-audio",
         "--shutdown-timeout-ms"
     };
 
     internal static readonly HashSet<string> PathOptions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "--open", "--module", "--rom", "--preload-media", "--media-path", "--verify-module",
+        "--open", "--module", "--rom", "--disc", "--preload-media", "--media-path", "--verify-module",
         "--reengine-dir", "--suite-dir", "--data-dir", "--config", "--log-dir", "--save-dir", "--feed",
         "--fixture", "--dump-screenshot", "--dump-audio"
     };
 
     internal static readonly HashSet<string> SyncFlags = new(StringComparer.OrdinalIgnoreCase)
     {
-        "--open", "--wait", "--verify", "--verify-module", "--headless", "--json",
+        "--wait", "--verify", "--verify-module", "--headless", "--json",
         "--check-updates", "--register-assoc", "--doctor", "--automation-port",
         "--jit-bringup", "--require-backend", "--frames", "--dump-screenshot", "--dump-audio",
         "--dry-run", "--tray-only", "--help", "-h", "/?", "help", "--version", "-v"
+    };
+
+    private static readonly HashSet<string> BackendTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "gl", "gl33", "opengl", "opengl33", "vk", "vulkan", "dx", "dx12", "d3d12", "directx", "directx12",
+        "parallelcpu", "parallel", "cpu", "sw", "software", "metal"
     };
 
     /// <summary>Strips <c>--autostart*</c> / <c>--auto-start*</c> tokens to enforce <c>AllowAutoStart = false</c>.</summary>
@@ -75,8 +81,6 @@ internal static class LauncherArgsHelper
                 if (!hasInlineValue && i + 1 < args.Length) i++;
                 continue;
             }
-
-            if (!trimmed.StartsWith("-", StringComparison.Ordinal)) return true;
         }
 
         return false;
@@ -113,6 +117,15 @@ internal static class LauncherArgsHelper
             }
 
             normalized[i] = raw;
+            if (string.Equals(key, "--require-backend", StringComparison.OrdinalIgnoreCase) &&
+                i + 1 < args.Length &&
+                BackendTokens.Contains((args[i + 1] ?? string.Empty).Trim()))
+            {
+                i++;
+                normalized[i] = args[i] ?? string.Empty;
+                continue;
+            }
+
             if (ValueOptions.Contains(key))
             {
                 if (i + 1 < args.Length)

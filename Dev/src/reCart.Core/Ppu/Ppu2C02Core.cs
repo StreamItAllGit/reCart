@@ -18,6 +18,11 @@ public sealed class Ppu2C02Core : ICartPpuController
 
     private readonly ICartMapper _mapper;
     private readonly CartRegionTimingProfile _timing;
+    private readonly int _scanlinesPerFrame;
+    private readonly int _preRenderScanline;
+    private readonly int _dotsPerScanline;
+    private readonly int _vblankStartScanline;
+    private readonly bool _isNtsc;
     private readonly Ppu2C02Registers _regs = new();
     private readonly Ppu2C02Renderer _renderer;
 
@@ -31,6 +36,11 @@ public sealed class Ppu2C02Core : ICartPpuController
         ArgumentNullException.ThrowIfNull(mapper);
         _mapper = mapper;
         _timing = timing ?? CartRegionTimingProfile.Ntsc;
+        _scanlinesPerFrame = _timing.ScanlinesPerFrame;
+        _preRenderScanline = _scanlinesPerFrame - 1;
+        _dotsPerScanline = _timing.DotsPerScanline;
+        _vblankStartScanline = _timing.VBlankStartScanline;
+        _isNtsc = _timing.Region == CartVideoRegionStandard.Ntsc;
         bool swapEmphasis = _timing.Region is CartVideoRegionStandard.Pal or CartVideoRegionStandard.Dendy;
         _renderer = new Ppu2C02Renderer(_mapper, _regs, swapEmphasis);
     }
@@ -60,20 +70,19 @@ public sealed class Ppu2C02Core : ICartPpuController
     /// <inheritdoc />
     public bool StepDot()
     {
-        int preRenderScanline = _timing.ScanlinesPerFrame - 1;
         bool isVisible = _scanline < CartEngineConstants.FrameHeight;
-        bool isPreRender = _scanline == preRenderScanline;
+        bool isPreRender = _scanline == _preRenderScanline;
 
         if (isVisible || isPreRender)
         {
             StepRenderScanlineDot(isVisible, isPreRender);
         }
-        else if (_scanline == _timing.VBlankStartScanline && _dot == 1)
+        else if (_scanline == _vblankStartScanline && _dot == 1)
         {
             EnterVBlankAtDotOne();
         }
 
-        return AdvanceDotCursor(preRenderScanline);
+        return AdvanceDotCursor();
     }
 
     /// <inheritdoc />
@@ -185,48 +194,45 @@ public sealed class Ppu2C02Core : ICartPpuController
 
     private void StepRenderScanlineDot(bool isVisible, bool isPreRender)
     {
-        if (isPreRender && _dot == 1)
-        {
-            _regs.Status &= unchecked((byte)~0xE0);
-            _regs.NmiPreviousLine = false;
-            _regs.NmiPending = false;
-            _regs.SuppressVBlankFlag = false;
-            _regs.SuppressNmi = false;
-            _renderer.ClearSpriteScanlineState();
-        }
+        int dot = _dot;
+        if (dot == 0) return;
 
-        if (isVisible && _dot >= 1 && _dot <= 256)
+        if (dot <= 256)
         {
-            _renderer.RenderPixel(_scanline, _dot - 1);
-        }
-
-        if (!_regs.IsRenderingEnabled) return;
-
-        if ((_dot >= 1 && _dot <= 256) || (_dot >= 321 && _dot <= 336))
-        {
-            _renderer.StepBackgroundFetch(_scanline, _dot);
-        }
-
-        if (_dot == 256)
-        {
-            _regs.IncrementY();
-        }
-        else if (_dot == 257)
-        {
-            _regs.CopyHorizontal();
             if (isVisible)
             {
-                _renderer.EvaluateSpritesForNextScanline(_scanline);
+                _renderer.RenderPixel(_scanline, dot - 1);
             }
-        }
-        if (_dot >= 258 && _dot <= 320)
-        {
-            _renderer.StepSpriteFetch(_scanline, _dot);
-        }
+            else if (dot == 1)
+            {
+                _regs.Status &= unchecked((byte)~0xE0);
+                _regs.NmiPreviousLine = false;
+                _regs.NmiPending = false;
+                _regs.SuppressVBlankFlag = false;
+                _regs.SuppressNmi = false;
+                _renderer.ClearSpriteScanlineState();
+            }
 
-        if (isPreRender && _dot >= 280 && _dot <= 304)
+            if (!_regs.IsRenderingEnabled) return;
+            _renderer.StepBackgroundFetch(_scanline, dot);
+            if (dot == 256) _regs.IncrementY();
+        }
+        else if (dot == 257)
         {
-            _regs.CopyVertical();
+            if (!_regs.IsRenderingEnabled) return;
+            _regs.CopyHorizontal();
+            if (isVisible) _renderer.EvaluateSpritesForNextScanline(_scanline);
+        }
+        else if (dot <= 320)
+        {
+            if (!_regs.IsRenderingEnabled) return;
+            _renderer.StepSpriteFetch(_scanline, dot);
+            if (isPreRender && dot >= 280 && dot <= 304) _regs.CopyVertical();
+        }
+        else if (dot <= 336)
+        {
+            if (!_regs.IsRenderingEnabled) return;
+            _renderer.StepBackgroundFetch(_scanline, dot);
         }
     }
 
@@ -248,14 +254,13 @@ public sealed class Ppu2C02Core : ICartPpuController
         _regs.SuppressNmi = false;
     }
 
-    private bool AdvanceDotCursor(int preRenderScanline)
+    private bool AdvanceDotCursor()
     {
-        bool oddNtscSkip = IsOddNtscSkipDot(preRenderScanline);
-        if (oddNtscSkip || _dot >= _timing.DotsPerScanline - 1)
+        if (_dot >= _dotsPerScanline - 1 || IsOddNtscSkipDot())
         {
             _dot = 0;
             _scanline++;
-            if (_scanline >= _timing.ScanlinesPerFrame)
+            if (_scanline >= _scanlinesPerFrame)
             {
                 _scanline = 0;
                 _frameCount++;
@@ -269,16 +274,16 @@ public sealed class Ppu2C02Core : ICartPpuController
         return false;
     }
 
-    private bool IsOddNtscSkipDot(int preRenderScanline) =>
-        _scanline == preRenderScanline &&
+    private bool IsOddNtscSkipDot() =>
+        _scanline == _preRenderScanline &&
         _dot == 339 &&
         (_frameCount & 1) == 1 &&
         _regs.IsRenderingEnabled &&
-        _timing.Region == CartVideoRegionStandard.Ntsc;
+        _isNtsc;
 
     private byte ReadPpuStatus()
     {
-        if (_scanline == _timing.VBlankStartScanline)
+        if (_scanline == _vblankStartScanline)
         {
             if (_dot == 0)
             {
@@ -344,7 +349,7 @@ public sealed class Ppu2C02Core : ICartPpuController
         {
             _regs.NmiPending = true;
         }
-        else if (!nmiLine && _scanline == _timing.VBlankStartScanline && _dot <= 2)
+        else if (!nmiLine && _scanline == _vblankStartScanline && _dot <= 2)
         {
             _regs.NmiPending = false;
         }

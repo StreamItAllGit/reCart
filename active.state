@@ -2,22 +2,23 @@
   "schemaVersion": 2,
   "lifecycleState": "active",
   "name": "reCart",
+  "projectLead": "Stream",
   "projectGroup": "Personal",
   "relativePath": "Personal/reCartOne",
   "containerTier": "Tier A (4-Folder)",
   "ecosystemTier": "Tier1_Infrastructure",
   "appArchetype": "ENGINE",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "activeMilestone": "0.2.0",
   "goalMajorVersion": "1.0.0",
-  "stateChangedDate": "2026-11-23",
-  "lastVersionDate": "2026-11-23",
+  "stateChangedDate": "2026-11-27",
+  "lastVersionDate": "2026-11-27",
   "productionSubpath": "StreamItAll\\reEngine\\engines\\reCart",
   "supersededBy": null,
   "tasklistDetailLevel": 3,
   "openTaskCount": 7,
-  "completedTaskCount": 5,
-  "openReportCount": 3,
+  "completedTaskCount": 6,
+  "openReportCount": 1,
   "isPublicRepo": true,
   "requireHumanReviewBeforePush": false,
   "discordPost": {
@@ -32,11 +33,11 @@
   },
   "gates": {
     "isGate0ScopePassed": true,
-    "isGate1PlanPassed": false,
+    "isGate1PlanPassed": true,
     "isGate2BuildPassed": true,
     "isInspecterVerified": true,
     "isTessaSynced": true
   },
-  "notes": "v0.1.3 additive PATCH+1 (Foundation v0.5.5, reEngine v0.6.2, SharedLibs\\reCart\\v0.1.3): immediate window + background AOT compile overlay, recipe.JumpTables inline dispatch lifting, bundled 7z + MediaContainerExtractor .7z ROM support, HostSettingsStore F1 persistence, F3 HUD invariant width, and standalone raw-ROM clean-room Media Gate guidance + Select .recomp Module wiring.",
-  "updatedAtUtc": "2026-11-23T19:30:00.000Z"
+  "notes": "v0.1.4 stabilization, parity, hot-path optimization, Stage 2 E2E & public polish (Foundation v0.5.5, reEngine v0.6.2, SharedLibs\\reCart\\v0.1.4): D5 v2 isVerified bridge, ERR-001 zero empty catches, silent-idle demo audio, 0/8/16 live OverscanCrop refresh, F1 drawer deduplication, PlayerCliOptionHelpers CLI superset, Launcher interactive detach + KILL_ON_JOB_CLOSE, Core/Player hot-path optimizations, pre-1.0 v0.1.4 Media Gate visibility, CHARTER.md + 0.2.0-0.4.0 draft plans + public doc scrub, 125/125 isolated tests (0 warnings), and Stage 2 E2E PASS (http://127.0.0.1:5005); 1 open report (RPT-0518 for v0.3.0/v0.7.0).",
+  "updatedAtUtc": "2026-11-27T22:25:00.000Z"
 }

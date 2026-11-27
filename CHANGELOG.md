@@ -5,8 +5,23 @@ All notable changes to **`reCart`** are documented in this file following [Keep 
 ## [Unreleased]
 
 ### Changed
-- **Workspace Hygiene (/clean -- 2026-11-20):** Purged 16.84 MB of disposable caches.
-- **Hardened 7-Minor Backend Roadmap & RecompBible Sync (/scope):** Re-aligned `ROADMAP.md`, `FEATURES.md`, `README.md`, `AGENTS.md`, `active.state`, `Dev\docs\*`, `Dev\docs\plans\tasklist.md`, and `R&D\Dev\task_graph.json` onto a dedicated single-subsystem backend progression (`v0.2.0` Cooperative Scheduler + Shared `6502 -> IR` / RyuJIT / Zero-RWX -> `v0.3.0` Blip-Buffer DSP + `PAL`/`Dendy` -> `v0.4.0` Two-Phase `ParallelCpu` PPU + GPU Compositor -> `v0.5.0` Commercial Mappers + Vaults/1-Step Undo + 10-Rail + 8-File Dual-Installer -> `v0.6.0` Clean-Room FDS HLE + 6-Chip Expansion Audio + `.re*`/Recipes/Manual -> `v0.7.0` Raw-Media `R04` Harden + `R3` Promoter + Research Rail + Runtime API + 3-Board Proving-Ground Matrix) converging on `v1.0.0` Going Gold (`win-x64`) and `v1.1.0–v5.0.0` horizons (`RecompBible R01–R14` & Standards `27`/`28`), advancing `activeMilestone` to `0.2.0` while `v0.1.0` awaits human sign-off for its 2-channel `--prerelease` push.
+- Tracked future-milestone blueprints (`v0.2.0`–`v0.4.0` drafts) and ongoing cross-engine alignment on the 7-minor path toward `v1.0.0` Going Gold (`win-x64`).
+
+## [0.1.4] - 2026-11-27
+
+### Added
+- **Expanded Player CLI Superset (`PlayerCliOptionHelpers` & `PlayerCliOptions`):** Extracted strict CLI parsing helpers and wired `--doctor`, `--tray-only`, `--fps-mode`, `--target-fps`, `--vsync` / `--no-vsync`, `--fast-forward`, `--open-settings`, `--show-fps`, `--enable-logs`, `--force-zero-rwx`, `--profile`, and `--disc` against `reEngine.Host v0.6.2`.
+- **Launcher Interactive Detach & Job-Object Cleanup (`reCart.Launcher`):** Updated `LauncherArgsHelper` so interactive GUI launches detach cleanly while synchronous diagnostic/automation waits bind a Win32 `KILL_ON_JOB_CLOSE` job object (`reCart.exe` remains `< 2 MB` single-file).
+- **Project Charter, Future-Milestone Drafts & Stage 2 Playbooks:** Added `Dev\docs\CHARTER.md` (linked in `AGENTS.md`), draft future-milestone plans (`0.2.0`–`0.4.0` including NeuroPlay pre-mute Blip-buffer PCM tap requirements), and Stage 2 virtual-desktop E2E coverage and input playbooks (`OPERATIONS.E2ECoverage.md`, `OPERATIONS.InputPlaybook.md`).
+
+### Changed
+- **Core & Player Hot-Path Optimizations:** Added pre-packed `uint` RGBA8888 lookup (`PackedRgbaLut`) and `MemoryMarshal.Cast` packed surface writes in `Ppu2C02Palette`, `Ppu2C02Renderer`, and `ReCartSessionHost`; cached PPU/APU region tables and thresholds; short-circuited IRQ polling when CPU interrupt disable is set; switched power-of-two mapper bank indexing to bitmasks; moved controller port buffers to `stackalloc`; and cached `SDL3.dll` export delegates.
+- **Public Documentation Polish & Screenshot Showcase:** Streamlined `README.md` with staged clean-room Stage 2 screenshots, direct links to `Foundation`, `IronFrame-OuterFortress-Cart-01-Recomp`, and `v0.1.4` Pre-Release, and a collapsible 2-member `.recomp` contract snippet; updated `SECURITY.md` with `v0.1.4` tracking and direct GitHub Security Advisories URL; and scrubbed internal jargon across public root documents.
+- **Verification Coverage (`125/125` Isolated Tests + Stage 2 E2E):** Expanded the zero-asset `APP_ISOLATED_TEST=1` xUnit suite from `94` to **`125/125` passing tests** (`0` warnings across `Release` and `Debug -p:ReCartTestAutomation=true`) alongside Stage 2 virtual-desktop E2E verification (`http://127.0.0.1:5005`).
+
+### Fixed
+- **Silent-Idle Demo Audio, Live `0/8/16` Overscan Refresh & `F1` Drawer Deduplication (`reCart.Player`):** Silenced idle frames in `SynthesizeDemoAudio` (`maxAbs == 0`) with chime playback only on active player input, fixed `ExtraRow_OverscanCrop` (`0 -> 8 -> 16 -> 0` + reset) to call `UpdateDrawerDescriptor` live, removed redundant `F1` System drawer controls, and surfaced `reCart v0.1.4` visibility inside the Media Gate viewport.
+- **Byte-Match `v2` Schema Parity & Empty-Catch Remediation (`reCart.Decomp`, `reCart.Player`):** Extended `D4ReportSchemaHelpers.ValidateD5Core` to accept `"isVerified"` alongside `"romMatched"` and replaced empty catch blocks in `MediaGateHandlers` with explicit cancellation/disposal trace logging (`0` static-scanner findings).
 
 ## [0.1.3] - 2026-11-23
 
@@ -37,7 +52,7 @@ All notable changes to **`reCart`** are documented in this file following [Keep 
 - **Clean-Room `aot-recipe.json` `.recomp` Support (`reCart.Contracts`, `reCart.Compiler`):** Added `CartAotRecipeSpec` (`seeds`, `entryAddresses`, `jumpTables`, `trampolines`, `memoryWatches`) and updated `CleanRoomRecompPackager` + `ColdAotCacheCompiler` to validate and locally compile 2-member clean-room recipe archives (`[module.recomp.json, aot-recipe.json]`) alongside existing 3-member lifted archives into `<dataDir>\cache\`.
 - **Headerless `.prg` Support (`CartPrgHeaderSynthesizer`, `reCart.Player`):** Added deterministic 16-byte iNES/NES 2.0 header synthesis (`CartPrgHeaderSynthesizer`) and `.prg` preload/checksum resolution in `ReCartSessionHost` (matching any declared entry in `requiredDiscChecksums` before synthesis).
 - **Differential Lockstep CLI Runner (`--lockstep-oracle --lockstep-steps <N>`):** Added `--lockstep-steps` CLI option and `ReCartLockstepRunner` comparing AOT module execution against quarantined `InterpreterOracle` (`A, X, Y, SP, PC, P`, `ActivePrgBank`, and `2 KB` WRAM `..`).
-- **Standard 18 v2 `d5_byte_match.json` Aliases (`reCart.Decomp`):** Extended `D4ReportSchemaHelpers.ValidateD5Core` to accept `matchedBinaryCount`, `relativePath`, `fileSizeBytes`, and `sha256Hex` alongside v1 keys.
+- **v2 `d5_byte_match.json` Schema Aliases (`reCart.Decomp`):** Extended `D4ReportSchemaHelpers.ValidateD5Core` to accept `matchedBinaryCount`, `relativePath`, `fileSizeBytes`, and `sha256Hex` alongside v1 keys.
 
 ### Changed
 - Bumped `reCart` SDK and installer version `0.1.0 -> 0.1.1` (`SharedLibs\reCart\v0.1.1\`), keeping `activeMilestone` pinned at `0.2.0`.

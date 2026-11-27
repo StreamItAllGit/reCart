@@ -15,12 +15,16 @@ namespace reCart.Core.Mappers;
 public sealed class UxRomMapper : CartMapperBase
 {
     private readonly int _prgBankCount16K;
+    private readonly int _prgByteMask;
+    private readonly int _prgBankMask;
     private int _switchableBank;
 
     /// <summary>Initializes a <c>UxROM</c> mapper from a loaded <see cref="InesRomImage"/>.</summary>
     public UxRomMapper(InesRomImage rom) : base(rom)
     {
         _prgBankCount16K = Math.Max(1, PrgRom.Length / 16384);
+        _prgByteMask = PrgRom.Length > 0 && (PrgRom.Length & (PrgRom.Length - 1)) == 0 ? PrgRom.Length - 1 : -1;
+        _prgBankMask = _prgBankCount16K > 0 && (_prgBankCount16K & (_prgBankCount16K - 1)) == 0 ? _prgBankCount16K - 1 : -1;
         Reset();
     }
 
@@ -33,12 +37,14 @@ public sealed class UxRomMapper : CartMapperBase
         if (address >= 0xC000)
         {
             int fixedBank = _prgBankCount16K - 1;
-            return PrgRom[(fixedBank * 16384 + (address & 0x3FFF)) % PrgRom.Length];
+            int offset = (fixedBank << 14) | (address & 0x3FFF);
+            return PrgRom[_prgByteMask >= 0 ? offset & _prgByteMask : offset % PrgRom.Length];
         }
 
         if (address >= 0x8000)
         {
-            return PrgRom[(_switchableBank * 16384 + (address & 0x3FFF)) % PrgRom.Length];
+            int offset = (_switchableBank << 14) | (address & 0x3FFF);
+            return PrgRom[_prgByteMask >= 0 ? offset & _prgByteMask : offset % PrgRom.Length];
         }
 
         if (address >= 0x6000)
@@ -55,7 +61,7 @@ public sealed class UxRomMapper : CartMapperBase
         if (address >= 0x8000)
         {
             byte effective = SubmapperId == 1 ? value : (byte)(value & CpuRead(address));
-            _switchableBank = effective % _prgBankCount16K;
+            _switchableBank = _prgBankMask >= 0 ? effective & _prgBankMask : effective % _prgBankCount16K;
             ActivePrgBank = (uint)_switchableBank;
             return;
         }

@@ -33,7 +33,7 @@ internal sealed partial class ReCartSessionHost
                 catch (Exception readEx) { System.Diagnostics.Trace.WriteLine(readEx.Message); }
             }
             string modId = mf?.ModuleId ?? CartEngineConstants.AppId;
-            string modTitle = mf?.DisplayName ?? $"{CartEngineConstants.DisplayName} Session";
+            string modTitle = mf?.DisplayName ?? $"{CartEngineConstants.DisplayName} v{CartEngineConstants.Version}";
             return new LoadedCartSessionInput(mf, openPath, null, null, null, null, modId, modTitle, "BYO .nes / .prg / .zip / .7z (data\\rom\\)", Path.Combine(options.Environment.DataDirectory, "rom"));
         }
     }
@@ -60,14 +60,14 @@ internal sealed partial class ReCartSessionHost
             WindowHeight = 720,
             ContentWidth = CartEngineConstants.FrameWidth,
             ContentHeight = CartEngineConstants.FrameHeight,
-            TargetFps = timing.FrameRateHz,
+            TargetFps = _options.TargetFps ?? timing.FrameRateHz,
             HeadlessFrameCount = _options.Frames,
             DumpFramePath = _options.DumpScreenshotPath,
             DumpAudioPath = _options.DumpAudioPath,
             AutomationPort = _options.AutomationPort,
             AutomationToken = _options.AutomationToken,
             AllowedSnapshotRoot = _options.Environment.Sandbox.IsSandboxActive ? _options.Environment.Sandbox.SandboxRoot : _options.Environment.DataDirectory,
-            RequireVisibleWindow = !_options.Headless,
+            RequireVisibleWindow = !_options.Headless && !_options.TrayOnly,
             ShowMediaGateInitially = ShouldShowMediaGateInitially(_options, loaded),
             ExpectedMediaSha256 = expectedSha,
             InitialMediaGateError = initialError,
@@ -78,6 +78,11 @@ internal sealed partial class ReCartSessionHost
             PreferExplicitScale = _options.HasExplicitScale,
             PreferExplicitAspectRatio = _options.HasExplicitAspectMode,
             IsDemoCartMode = _options.DemoCart,
+            FrameRateMode = _options.FrameRateMode,
+            IsVsyncEnabled = _options.IsVsyncEnabled ?? false,
+            OpenSettingsInitially = _options.OpenSettingsInitially,
+            ShowFpsInitially = _options.ShowFpsInitially,
+            ShouldEnableRuntimeLogs = _options.ShouldEnableRuntimeLogs,
             ControlsConfigPath = Path.Combine(_options.Environment.DataDirectory, "config", "controls.json"),
             PreferredBackend = PlayerCliOptions.ToHostBackendKind(backendId),
             RequireBackend = _options.RequireBackend,
@@ -298,7 +303,7 @@ internal sealed partial class ReCartSessionHost
             {
                 await ActivateLoadedRomAsync(loaded, state => _runner?.SetAotCompileState(state), token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException ex) { System.Diagnostics.Trace.WriteLine($"Background AOT activation canceled: {ex.Message}"); }
             catch (Exception ex)
             {
                 Log("ERROR", $"Background AOT activation failed: {ex.Message}");
@@ -313,10 +318,10 @@ internal sealed partial class ReCartSessionHost
 
     private async Task CancelAndWaitBackgroundActivationAsync()
     {
-        try { _activationCts?.Cancel(); } catch (ObjectDisposedException) { }
+        try { _activationCts?.Cancel(); } catch (ObjectDisposedException ex) { System.Diagnostics.Trace.WriteLine($"Background AOT CTS already disposed: {ex.Message}"); }
         if (_activationTask is { } task)
         {
-            try { await task.ConfigureAwait(false); } catch (OperationCanceledException) { }
+            try { await task.ConfigureAwait(false); } catch (OperationCanceledException ex) { System.Diagnostics.Trace.WriteLine($"Background AOT wait canceled: {ex.Message}"); }
         }
         _activationCts?.Dispose();
         _activationCts = null;

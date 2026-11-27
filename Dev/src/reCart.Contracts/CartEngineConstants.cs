@@ -26,7 +26,7 @@ public static class CartEngineConstants
     public const string PlatformId = "nes";
 
     /// <summary>Active <c>reCart</c> engine semantic version.</summary>
-    public const string Version = "0.1.3";
+    public const string Version = "0.1.4";
 
     /// <summary>Primary engine track advertised by module and installer manifests.</summary>
     public const string CompatibleEngineTrack = "0.1.x";
@@ -50,7 +50,7 @@ public static class CartEngineConstants
     public const string SuiteId = "reEngine";
 
     /// <summary>Canonical umbrella subpath for side-by-side suite engine installations.</summary>
-    public const string UmbrellaSubpath = "StreamItAll\\reEngine\\engines\\reCart\\v0.1.3";
+    public const string UmbrellaSubpath = "StreamItAll\\reEngine\\engines\\reCart\\v0.1.4";
 
     /// <summary>Default installer profile identifier.</summary>
     public const string DefaultInstallProfile = "lightweight";

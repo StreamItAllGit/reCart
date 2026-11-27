@@ -19,6 +19,12 @@ internal sealed partial class ReCartSessionHost
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void SdlPumpEventsDelegate();
 
+    private static readonly object SdlPumpSync = new();
+    private static bool _sdlPumpResolved;
+    private static IntPtr _sdlHandle;
+    private static SdlWasInitDelegate? _sdlWasInit;
+    private static SdlPumpEventsDelegate? _sdlPumpEvents;
+
     internal static async Task<T> AwaitWithResponsivePumpAsync<T>(
         Task<T> pendingTask,
         Action<string>? heartbeatSink = null,
@@ -44,21 +50,57 @@ internal sealed partial class ReCartSessionHost
     {
         try
         {
-            string localSdl = Path.Combine(AppContext.BaseDirectory, "SDL3.dll");
-            if (!NativeLibrary.TryLoad(File.Exists(localSdl) ? localSdl : "SDL3", out IntPtr sdlHandle)) return;
+            EnsureSdlPumpDelegates();
+            if (_sdlPumpEvents is null) return;
+            if (_sdlWasInit is not null && _sdlWasInit(0x20u) == 0) return;
+            _sdlPumpEvents();
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            System.Diagnostics.Trace.WriteLine($"SDL event pump skipped: {ex.Message}");
+        }
+    }
+
+    private static void EnsureSdlPumpDelegates()
+    {
+        if (_sdlPumpResolved) return;
+        lock (SdlPumpSync)
+        {
+            if (_sdlPumpResolved) return;
+            _sdlPumpResolved = true;
             try
             {
+                string localSdl = Path.Combine(AppContext.BaseDirectory, "SDL3.dll");
+                if (!NativeLibrary.TryLoad(File.Exists(localSdl) ? localSdl : "SDL3", out IntPtr sdlHandle)) return;
+                _sdlHandle = sdlHandle;
                 if (NativeLibrary.TryGetExport(sdlHandle, "SDL_WasInit", out IntPtr wasInitPtr))
-                {
-                    uint videoInit = Marshal.GetDelegateForFunctionPointer<SdlWasInitDelegate>(wasInitPtr)(0x20u);
-                    if (videoInit == 0) return;
-                }
+                    _sdlWasInit = Marshal.GetDelegateForFunctionPointer<SdlWasInitDelegate>(wasInitPtr);
                 if (NativeLibrary.TryGetExport(sdlHandle, "SDL_PumpEvents", out IntPtr pumpPtr))
-                    Marshal.GetDelegateForFunctionPointer<SdlPumpEventsDelegate>(pumpPtr)();
+                    _sdlPumpEvents = Marshal.GetDelegateForFunctionPointer<SdlPumpEventsDelegate>(pumpPtr);
             }
-            finally { NativeLibrary.Free(sdlHandle); }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+            {
+                System.Diagnostics.Trace.WriteLine($"SDL3.dll resolve skipped: {ex.Message}");
+            }
         }
-        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException) { }
+    }
+
+    internal static int RunDoctor(PlayerCliOptions options, TextWriter output, TextWriter error)
+    {
+        IReadOnlyList<HostBackendCapability> backends = HostBackendProbe.ProbeAll();
+        string audioDriver = NativeAudioDriverSelector.SelectBestDriver(options.AudioDriverOverride);
+        bool preferredAvailable = backends.Any(b => b.Kind == options.PreferredBackend && b.IsAvailable);
+        if (options.RequireBackend && !preferredAvailable)
+        {
+            error.WriteLine($"Doctor failed: required backend '{options.BackendId}' is unavailable.");
+            return 6;
+        }
+
+        output.WriteLine(
+            $"Doctor OK: {CartEngineConstants.EngineId} v{CartEngineConstants.Version}, protocol={CartEngineConstants.HostProtocolVersion}, " +
+            $"backend={options.BackendId} (available={preferredAvailable}), backends={backends.Count(b => b.IsAvailable)}/{backends.Count}, " +
+            $"audio={audioDriver}, zeroRwx={options.ForceZeroRwx}, dataDir='{options.Environment.DataDirectory}', allowAutoStart={CartEngineConstants.AllowAutoStart}");
+        return 0;
     }
 
     internal static int VerifyTarget(PlayerCliOptions options, TextWriter output, TextWriter error)

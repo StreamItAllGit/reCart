@@ -237,4 +237,37 @@ public sealed class DecompD4ValidationTests
         }
         finally { Directory.Delete(temp, recursive: true); }
     }
+
+    [Fact]
+    public void D5ByteMatchValidator_AcceptsStandard18SchemaV2AndRejectsUnverified()
+    {
+        const string validV2 = """
+            {
+              "schemaVersion": 2,
+              "isPassed": true,
+              "matchedBinaryCount": 1,
+              "mismatchedBytes": 0,
+              "isVerified": true,
+              "fileSizeBytes": 131088,
+              "binaries": [
+                {
+                  "relativePath": "bank_main.prg",
+                  "fileSizeBytes": 131072,
+                  "sha256Hex": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                }
+              ]
+            }
+            """;
+
+        D5ByteMatchValidationResult pass = D4BuildReportValidator.ValidateD5ByteMatchJson(validV2);
+        Assert.True(pass.IsValid, pass.Summary);
+        Assert.Equal(1, pass.MatchedBinaries);
+        Assert.Equal(0, pass.MismatchedBytes);
+        Assert.Equal(131088, pass.RomBytes);
+
+        string unverifiedV2 = validV2.Replace("\"isVerified\": true", "\"isVerified\": false", StringComparison.Ordinal);
+        D5ByteMatchValidationResult fail = D4BuildReportValidator.ValidateD5ByteMatchJson(unverifiedV2);
+        Assert.False(fail.IsValid);
+        Assert.Contains(fail.Violations, v => v.Contains("isVerified", StringComparison.OrdinalIgnoreCase));
+    }
 }

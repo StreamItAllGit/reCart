@@ -19,6 +19,14 @@ public sealed class Apu2A03Core : ICartApuSink
 
     private readonly Func<ushort, byte>? _memoryRead;
     private readonly CartRegionTimingProfile _timing;
+    private readonly bool _isPal;
+    private readonly ushort[] _noisePeriodTable;
+    private readonly ushort[] _dmcRateTable;
+    private readonly long _fcStep1;
+    private readonly long _fcStep2;
+    private readonly long _fcStep3;
+    private readonly long _fcStep4;
+    private readonly long _fcStep5;
     private readonly AudioRingBuffer _ringBuffer;
     private readonly ApuPulseChannel _pulse1 = new(isPulse1: true);
     private readonly ApuPulseChannel _pulse2 = new(isPulse1: false);
@@ -46,6 +54,14 @@ public sealed class Apu2A03Core : ICartApuSink
         if (sampleRateHz <= 0) throw new ArgumentOutOfRangeException(nameof(sampleRateHz));
         _memoryRead = memoryRead;
         _timing = timing ?? CartRegionTimingProfile.Ntsc;
+        _isPal = _timing.Region == CartVideoRegionStandard.Pal;
+        _noisePeriodTable = _isPal ? Apu2A03Tables.NoisePeriodPal : Apu2A03Tables.NoisePeriodNtsc;
+        _dmcRateTable = _isPal ? Apu2A03Tables.DmcRatePal : Apu2A03Tables.DmcRateNtsc;
+        _fcStep1 = _isPal ? 8313 : 7457;
+        _fcStep2 = _isPal ? 16627 : 14913;
+        _fcStep3 = _isPal ? 24939 : 22371;
+        _fcStep4 = _isPal ? 33253 : 29829;
+        _fcStep5 = _isPal ? 41565 : 37281;
         SampleRateHz = sampleRateHz;
         _cyclesPerSample = _timing.CpuClockHz / sampleRateHz;
         _ringBuffer = new AudioRingBuffer(Math.Max(2048, ringBufferCapacitySamples), channels: 2);
@@ -122,9 +138,8 @@ public sealed class Apu2A03Core : ICartApuSink
         _cpuCycle++;
         _triangle.ClockTimer();
 
-        bool isPal = _timing.Region == CartVideoRegionStandard.Pal;
-        _noise.ClockTimer(isPal ? Apu2A03Tables.NoisePeriodPal : Apu2A03Tables.NoisePeriodNtsc);
-        _dmc.ClockCycle(isPal ? Apu2A03Tables.DmcRatePal : Apu2A03Tables.DmcRateNtsc, _memoryRead);
+        _noise.ClockTimer(_noisePeriodTable);
+        _dmc.ClockCycle(_dmcRateTable, _memoryRead);
 
         if ((_cpuCycle & 1) == 0)
         {
@@ -132,7 +147,7 @@ public sealed class Apu2A03Core : ICartApuSink
             _pulse2.ClockTimer();
         }
 
-        AdvanceFrameCounter(isPal);
+        AdvanceFrameCounter();
 
         _sampleAccumulator += 1.0;
         if (_sampleAccumulator >= _cyclesPerSample)
@@ -233,25 +248,19 @@ public sealed class Apu2A03Core : ICartApuSink
         }
     }
 
-    private void AdvanceFrameCounter(bool isPal)
+    private void AdvanceFrameCounter()
     {
         _frameCounterCycle++;
-        long s1 = isPal ? 8313 : 7457;
-        long s2 = isPal ? 16627 : 14913;
-        long s3 = isPal ? 24939 : 22371;
-        long s4 = isPal ? 33253 : 29829;
-        long s5 = isPal ? 41565 : 37281;
-
-        if (_frameCounterCycle == s1 || _frameCounterCycle == s3) ClockQuarterFrame();
-        else if (_frameCounterCycle == s2) { ClockQuarterFrame(); ClockHalfFrame(); }
-        else if (!_fiveStepMode && _frameCounterCycle == s4)
+        if (_frameCounterCycle == _fcStep1 || _frameCounterCycle == _fcStep3) ClockQuarterFrame();
+        else if (_frameCounterCycle == _fcStep2) { ClockQuarterFrame(); ClockHalfFrame(); }
+        else if (!_fiveStepMode && _frameCounterCycle == _fcStep4)
         {
             ClockQuarterFrame();
             ClockHalfFrame();
             if (!_irqInhibit) _frameIrqPending = true;
             _frameCounterCycle = 0;
         }
-        else if (_fiveStepMode && _frameCounterCycle == s5)
+        else if (_fiveStepMode && _frameCounterCycle == _fcStep5)
         {
             ClockQuarterFrame();
             ClockHalfFrame();

@@ -4,7 +4,7 @@
 
 | Version | Supported | Security Boundary Notes |
 | :--- | :--- | :--- |
-| `0.1.x` | Yes | Active `reCart v0.1.0` track (`reCart.*` binaries on `reEngine v0.5.0` + `Foundation v0.5.2`) |
+| `0.1.x` | Yes | Active `reCart v0.1.4` track (`reCart.*` binaries on `reEngine v0.6.2` + `Foundation v0.5.5`) |
 
 ## Built-In Security & Containment Invariants
 
@@ -23,6 +23,6 @@
 
 Please **do not** open a public GitHub issue for suspected security vulnerabilities.
 
-1. Report privately via GitHub **Security Advisories** (`Report a vulnerability` on the repository Security tab) or direct maintainer contact.
+1. Report privately via GitHub [**Security Advisories**](https://github.com/StreamItAllGit/reCart/security/advisories/new) (`Report a vulnerability` on the repository Security tab) or direct maintainer contact.
 2. Include the affected assembly, version (`v0.1.x`), reproduction steps, and expected vs. actual behavior.
 3. Maintainers acknowledge reports within **72 hours** and coordinate remediation prior to public disclosure.
