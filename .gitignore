@@ -69,3 +69,7 @@ data/rom/
 *.rom
 *.sav
 *.7z
+.beta.manifest.local.json
+*.local.json
+*.local.env
+.beta.env
